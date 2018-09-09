@@ -300,7 +300,11 @@ def main(model_path):
                     obj.parent = amt
                     obj.parent_type = "BONE"
                     obj.parent_bone = node[0].name
-                    obj.location = [0,0,0]
+                    #boneのtail側にparentされるので、根元に動かす
+                    obj.location = [
+                        bones[key].head[0]-bones[key].tail[0],
+                        bones[key].head[1]-bones[key].tail[1],
+                        bones[key].head[2]-bones[key].tail[2]]
         
         # vertex groupの作成
         if origin != None:

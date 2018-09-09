@@ -52,7 +52,7 @@ def parse_glb(data: bytes):
         if chunk_type == b'BIN\x00':
             body = chunk_data
         elif chunk_type == b'JSON':
-            json_str = chunk_data.decode('utf-8')#blenderのpythonverが古く自前decode要す
+            json_str = chunk_data.decode('utf-8')#blenderのpythonverが古くいちいち自前decode要す
         else:
             raise Exception('unknown chunk_type: {}'.format(chunk_type))
 
@@ -145,7 +145,17 @@ def main(model_path):
 
             #マテリアルの場所を記録
             vrm_mesh.material_index = primitive["material"]
-            #TODO ここからモーフターゲット
+            #TODO ここからモーフターゲット vrmのtargetは相対位置
+            if "targets" in primitive:
+                morphTargetDict = dict()
+                for i,posIndex in enumerate(primitive["targets"]):
+                    accessor = accessors[posIndex["POSITION"]]
+                    posArray = verts_attr_fuctory(accessor)
+                    if "extra" in posIndex:#for old AliciaSolid
+                        morphTargetDict[primitive["targets"][i]["extra"]["name"]] = posArray
+                    else:
+                        morphTargetDict[primitive["extras"]["targetNames"][i]] = posArray
+                vrm_mesh.addAttribute({"morphTargetDict":morphTargetDict})
 
             vrm_meshes.append(vrm_mesh)
     #ここからマテリアル
@@ -273,7 +283,7 @@ def main(model_path):
         mat_dict[index] = b_mat
     
 
-    #mesh_build
+    #mesh_obj_build
     for mesh in vrm_meshes:
         msh = bpy.data.meshes.new(mesh.name)
         msh.from_pydata(mesh.POSITION, [], mesh.face_indices.tolist())
@@ -286,7 +296,7 @@ def main(model_path):
                 obj.location = node[0].position
                 if len(node) == 3:
                     origin = node
-                else:#len=2,skinがない場合#なんかアホ毛が2本ほどでるぅ。。。
+                else:#len=2,skinがない場合
                     obj.parent = amt
                     obj.parent_type = "BONE"
                     obj.parent_bone = node[0].name
@@ -310,6 +320,9 @@ def main(model_path):
                         vg_dict[vrm_bones[node_id].name] = [[i,weight]]#1個目のｳｪｲﾄ（初期化兼）
             #頂点ﾘｽﾄに辞書から書き込む
             for vg in vg_list:
+                if not vg.name in vg_dict.keys():
+                    print("unused vertex group")
+                    continue
                 weights = vg_dict[vg.name]
                 for w in weights:
                     if w[1] != 0.0:
@@ -333,16 +346,40 @@ def main(model_path):
         #material
         obj.data.materials.append(mat_dict[mesh.material_index])
 
+
+        def absolutaize_morph_Positions(basePoints,morphTargetpos):
+            shape_key_Positions = []
+            for basePos,morphPos in zip(basePoints,morphTargetpos):
+                x = basePos[0]+morphPos[0]
+                y = basePos[1]+morphPos[1]
+                z = basePos[2]+morphPos[2]
+                shape_key_Positions.append([x,y,z])
+            return shape_key_Positions
+        #shapeKeys
+        if hasattr(mesh,"morphTargetDict"):
+            obj.shape_key_add("Basis")
+            for morphName,morphPos in mesh.morphTargetDict.items():
+                obj.shape_key_add(morphName)
+                keyblock = msh.shape_keys.key_blocks[morphName]
+                shape_data = absolutaize_morph_Positions(mesh.POSITION,morphPos)
+                for i,co in enumerate(shape_data):
+                    keyblock.data[i].co = co
+
+
     #cleaning
+    bpy.ops.object.select_all(action="DESELECT")
     for obj in bpy.data.objects:
         if obj.type != "MESH":
             continue
+        obj.select = True
+        bpy.ops.object.shade_smooth()
         bpy.context.scene.objects.active = obj
         bpy.ops.object.mode_set(mode='EDIT')
         bpy.ops.mesh.delete_loose()
         bpy.ops.mesh.select_all()
         bpy.ops.mesh.remove_doubles(use_unselected= True)
         bpy.ops.object.mode_set(mode='OBJECT')
+        obj.select = False
     """#armatureだけ回してpose_applyしてもだめでした☆
     bpy.ops.object.select_all(action="DESELECT")
     bpy.context.scene.objects.active = amt

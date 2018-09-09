@@ -54,7 +54,8 @@ class Material:
         if "pbrMetallicRoughness" in material:
             self.color_texture_index = material["pbrMetallicRoughness"]["baseColorTexture"]["index"]
             self.color_texcoord_index= material["pbrMetallicRoughness"]["baseColorTexture"]["texCoord"]
-            self.base_color = material["pbrMetallicRoughness"]["baseColorFactor"]
+            if "baseColorFactor" in material["pbrMetallicRoughness"]:
+                self.base_color = material["pbrMetallicRoughness"]["baseColorFactor"]
 
 if "__main__" == __name__:
     pass

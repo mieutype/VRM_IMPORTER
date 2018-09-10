@@ -274,21 +274,24 @@ def main(model_path):
     mat_dict = dict()
     for index,mat in enumerate(vrm_materials):
         b_mat = bpy.data.materials.new(mat.name)
+        b_mat.use_shadeless = True
         b_mat.diffuse_color = mat.base_color[0:3]
         b_mat.use_transparency = True
-        b_mat.alpha = 0
+        b_mat.alpha = 1
         ts = b_mat.texture_slots.add()
         ts.texture = textures[mat.color_texture_index]
         ts.use_map_alpha = True
+        ts.blend_type = 'MULTIPLY'
         mat_dict[index] = b_mat
     
-
+    blend_mesh_object_list = []
     #mesh_obj_build
     for mesh in vrm_meshes:
         msh = bpy.data.meshes.new(mesh.name)
         msh.from_pydata(mesh.POSITION, [], mesh.face_indices.tolist())
         msh.update()
         obj = bpy.data.objects.new(mesh.name, msh)
+        blend_mesh_object_list.append(obj)
         #kuso of kuso
         origin = None
         for key,node in origin_bone.items():
@@ -367,9 +370,7 @@ def main(model_path):
 
     #cleaning
     bpy.ops.object.select_all(action="DESELECT")
-    for obj in bpy.data.objects:
-        if obj.type != "MESH":
-            continue
+    for obj in blend_mesh_object_list:
         obj.select = True
         bpy.ops.object.shade_smooth()
         bpy.context.scene.objects.active = obj
@@ -379,16 +380,27 @@ def main(model_path):
         bpy.ops.mesh.remove_doubles(use_unselected= True)
         bpy.ops.object.mode_set(mode='OBJECT')
         obj.select = False
-    """#armatureだけ回してpose_applyしてもだめでした☆
+
+    #axis 
+    bpy.ops.object.mode_set(mode='OBJECT')
     bpy.ops.object.select_all(action="DESELECT")
+    for obj in blend_mesh_object_list:
+        if obj.parent_type == 'BONE':#ボーンにくっ付いて動くのは無視:なんか吹っ飛ぶ髪の毛がいる?
+            continue
+        bpy.context.scene.objects.active = obj
+        obj.select = True
+        obj.rotation_mode = "XYZ"
+        obj.rotation_euler[0] = numpy.deg2rad(90)
+        obj.rotation_euler[2] = numpy.deg2rad(-90)
+        bpy.ops.object.transform_apply(rotation=True)
+        obj.select = False
     bpy.context.scene.objects.active = amt
-    amt.pose.bones[0].rotation_mode = "XYZ"
-    amt.pose.bones[0].rotation_euler[0] = 1.5
-    amt.pose.bones[0].rotation_euler[2] = -1.5
     amt.select = True
-    bpy.ops.object.mode_set(mode='POSE')
-    bpy.ops.pose.armature_apply()
-    """
+    amt.rotation_mode = "XYZ"
+    amt.rotation_euler[0] = numpy.deg2rad(90)
+    amt.rotation_euler[2] = numpy.deg2rad(-90)
+    bpy.ops.object.transform_apply(rotation=True)
+    
     
     
 

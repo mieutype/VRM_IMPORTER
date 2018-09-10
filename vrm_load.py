@@ -367,7 +367,10 @@ def main(model_path):
                 for i,co in enumerate(shape_data):
                     keyblock.data[i].co = co
 
-
+    #json dump
+    textblock = bpy.data.texts.new("{}.json".format(vrm_parsed_json["extensions"]["VRM"]["meta"]["title"]))
+    textblock.write(json.dumps(vrm_parsed_json,indent = 4))
+    
     #cleaning
     bpy.ops.object.select_all(action="DESELECT")
     for obj in blend_mesh_object_list:

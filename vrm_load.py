@@ -52,15 +52,15 @@ def parse_glb(data: bytes):
         if chunk_type == b'BIN\x00':
             body = chunk_data
         elif chunk_type == b'JSON':
-            json_str = chunk_data.decode('utf-8')#blenderのpythonverが古くいちいち自前decode要す
+            json_str = chunk_data.decode('utf-8')#blenderのpythonverが古く自前decode要す
         else:
             raise Exception('unknown chunk_type: {}'.format(chunk_type))
 
     return json.loads(json_str,object_pairs_hook=OrderedDict), body
 
-#あくまでvrmをpythonデータ化するだけで、blender型に変形はここではしない
+#あくまでvrmをpythonデータ化するだけで、blender型に変形はここではしない（といったが現状それは嘘だ
 def main(model_path):
-
+    #datachunkは一つしかない前提
     vrm_parsed_json, body_binary = None,None
     with open(model_path, 'rb') as f:
         vrm_parsed_json, body_binary = parse_glb(f.read())
@@ -68,7 +68,7 @@ def main(model_path):
     
     #改変不可ﾗｲｾﾝｽを撥ねる
     if re.match("CC(.*)ND(.*)", vrm_parsed_json["extensions"]["VRM"]["meta"]["licenseName"]) is not None:
-        raise Exception("This VRM is not allowed to Edit. CHECK ITS LICENSE")
+        raise Exception("This VRM is not allowed to Edit. CHECK ITS LICENSE　改変不可Licenseです。")
     #オリジナルライセンスに対する注意
     if vrm_parsed_json["extensions"]["VRM"]["meta"]["licenseName"] == "Other":
         print("Is this VRM allowed to Edit? CHECK IT LICENSE")
@@ -87,7 +87,7 @@ def main(model_path):
         image_binary = binaly.read_binaly(bufferViews[image_prop["bufferView"]]["byteLength"])
         image_type = image_prop["mimeType"].split("/")[-1]
         image_path = os.path.join(vrm_dir_path, image_name + "." + image_type)
-        if not os.path.exists(image_path):
+        if not os.path.exists(image_path):#すでに同名の画像がある場合は上書きしない
             with open(image_path, "wb") as imageWriter:
                 imageWriter.write(image_binary)
         else:
@@ -128,7 +128,7 @@ def main(model_path):
                     data_list.append(data)
                 return data_list
             vertex_attributes = primitive["attributes"]
-            #頂点属性が追加されたらここに書き足す↓(実装によっては存在しない属性もある)
+            #頂点属性が追加されたらここに書き足す↓(実装によっては存在しない属性もあるし、UVやｽｷﾆﾝｸﾞ情報は0->Nで増やせるが今は決め打ち)
             vertex_attributes_name =["POSITION","NORMAL","TANGENT","TEXCOORD_0","JOINTS_0","WEIGHTS_0"]
             for attr in vertex_attributes_name:
                 if not attr in vertex_attributes:
@@ -136,8 +136,8 @@ def main(model_path):
                     continue
                 accessor = accessors[vertex_attributes[attr]]
                 vrm_mesh.addAttribute({attr:verts_attr_fuctory(accessor)})
-            #ここuv:v座標が左右反転なので1-vすること（古いvrm実装はバグっているので注意(-vになってる)
-            #TEXCOORD_FIX [ uniVRM誤り: uv.y = -uv.y ->修復 uv.y = 1 - ( -uv.y ) => uv.y=1+uv.y]
+            #TEXCOORD_FIX [ 古いuniVRM誤り: uv.y = -uv.y ->修復 uv.y = 1 - ( -uv.y ) => uv.y=1+uv.y]
+            #uvは0-1にある前提で、マイナスであれば変換ミスとみなす
             for uv in vrm_mesh.TEXCOORD_0:
                 if uv[1] < 0:
                     uv[1] = 1 + uv[1]
@@ -148,10 +148,10 @@ def main(model_path):
             #TODO ここからモーフターゲット vrmのtargetは相対位置
             if "targets" in primitive:
                 morphTargetDict = dict()
-                for i,posIndex in enumerate(primitive["targets"]):
-                    accessor = accessors[posIndex["POSITION"]]
+                for i,morphTarget in enumerate(primitive["targets"]):
+                    accessor = accessors[morphTarget["POSITION"]]
                     posArray = verts_attr_fuctory(accessor)
-                    if "extra" in posIndex:#for old AliciaSolid
+                    if "extra" in morphTarget:#for old AliciaSolid
                         morphTargetDict[primitive["targets"][i]["extra"]["name"]] = posArray
                     else:
                         morphTargetDict[primitive["extras"]["targetNames"][i]] = posArray
@@ -195,8 +195,8 @@ def main(model_path):
     #省略されることもある。正直読み込み不要(自前計算できるので)
     #joints:JOINTS_0の指定node番号のindex
     for skin in vrm_parsed_json["skins"]:
-        accessor = accessors[skin["inverseBindMatrices"]]
-        vrm_skins_inverseBindMatrices_list.append(numpy.reshape(skin_attr_fuctory(accessor),(-1,4,4)))
+        #accessor = accessors[skin["inverseBindMatrices"]]
+        #vrm_skins_inverseBindMatrices_list.append(numpy.reshape(skin_attr_fuctory(accessor),(-1,4,4)))
         vrm_skins_nodes_list.append(skin["joints"])
 
 
@@ -226,12 +226,12 @@ def main(model_path):
                 parentPos = [0,0,0]
             else:
                 parentPos = bones[parentID].head
-            b.head = [parentPos[0]+vb.position[0],parentPos[1]+vb.position[1],parentPos[2]+vb.position[2]]
+            b.head = numpy.array(parentPos)+numpy.array(vb.position)
             #temprary tail pos(gltf doesn't have bone. it defines as joints )
             #gltfは関節で定義されていて骨の長さとか向きとかないからまあなんかそれっぽい方向にボーンを向けて伸ばしたり縮めたり
             if vb.children == None:
                 if parentID == -1:#唯我独尊：上向けとけ
-                    b.tail = [b.head[0],b.head[1],b.head[2]+0.05]
+                    b.tail = [b.head[0],b.head[1]+0.05,b.head[2]]
                 else:#normalize lenght to 0.03　末代：親から距離をちょっととる感じ
                     lengh = sqrt(pow(vb.position[0],2)+pow(vb.position[1],2)+pow(vb.position[2],2))
                     lengh *= 30
@@ -239,7 +239,7 @@ def main(model_path):
                         lengh =0.01
                     posDiff = [vb.position[0]/lengh,vb.position[1]/lengh,vb.position[2]/lengh]
                     if posDiff == [0.0,0.0,0.0]:
-                        posDiff[2]=0.01 #ボーンの長さが0だとOBJECT MODEに戻った時にボーンが消える
+                        posDiff[1] += 0.01 #ボーンの長さが0だとOBJECT MODEに戻った時にボーンが消えるので上向けとく
                     b.tail = [b.head[0]+posDiff[0],b.head[1]+posDiff[1],b.head[2]+posDiff[2]]
             else:#子供たちの方向の中間を見る
                 mean_relate_pos = [0,0,0]
@@ -301,10 +301,7 @@ def main(model_path):
                     obj.parent_type = "BONE"
                     obj.parent_bone = node[0].name
                     #boneのtail側にparentされるので、根元に動かす
-                    obj.location = [
-                        bones[key].head[0]-bones[key].tail[0],
-                        bones[key].head[1]-bones[key].tail[1],
-                        bones[key].head[2]-bones[key].tail[2]]
+                    obj.location = numpy.array(bones[key].head) - numpy.array(bones[key].tail)
         
         # vertex groupの作成
         if origin != None:
@@ -344,7 +341,7 @@ def main(model_path):
         blen_uv_data = msh.uv_layers[channnel_name].data
         for id,v_index in enumerate(flatten_vrm_mesh_vert_index):
             blen_uv_data[id].uv = mesh.TEXCOORD_0[v_index]
-            #blender axisnaize
+            #blender axisnaize(上下反転)
             blen_uv_data[id].uv[0] =blen_uv_data[id].uv[0]
             blen_uv_data[id].uv[1] =blen_uv_data[id].uv[1]*-1+1
         #material
@@ -354,10 +351,8 @@ def main(model_path):
         def absolutaize_morph_Positions(basePoints,morphTargetpos):
             shape_key_Positions = []
             for basePos,morphPos in zip(basePoints,morphTargetpos):
-                x = basePos[0]+morphPos[0]
-                y = basePos[1]+morphPos[1]
-                z = basePos[2]+morphPos[2]
-                shape_key_Positions.append([x,y,z])
+                #numpyのarrayの加算は連結ではなく、要素ごとの加算
+                shape_key_Positions.append(numpy.array(basePos) + numpy.array(morphPos))
             return shape_key_Positions
         #shapeKeys
         if hasattr(mesh,"morphTargetDict"):

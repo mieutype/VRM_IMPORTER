@@ -98,10 +98,10 @@ def main(model_path):
     #メッシュをパースする
     vrm_meshes = []
     for n,mesh in enumerate(vrm_parsed_json["meshes"]):
-        for i,primitive in enumerate(mesh["primitives"]):  
+        for j,primitive in enumerate(mesh["primitives"]):  
             vrm_mesh = VRM_Types.Mesh()
             vrm_mesh.mesh_id = n
-            vrm_mesh.name = mesh["name"]+str(i)
+            vrm_mesh.name = mesh["name"]+str(j)
             if primitive["mode"] != GLC.TRIANGLES:
                 #TODO その他ﾒｯｼｭﾀｲﾌﾟ対応
                 raise Exception("unSupported polygon type(:{}) Exception".format(primitive["mode"]))
@@ -145,7 +145,7 @@ def main(model_path):
 
             #マテリアルの場所を記録
             vrm_mesh.material_index = primitive["material"]
-            #TODO ここからモーフターゲット vrmのtargetは相対位置
+            #ここからモーフターゲット vrmのtargetは相対位置 normalは無視する
             if "targets" in primitive:
                 morphTargetDict = dict()
                 for i,morphTarget in enumerate(primitive["targets"]):
@@ -284,14 +284,17 @@ def main(model_path):
         ts.blend_type = 'MULTIPLY'
         mat_dict[index] = b_mat
     
-    blend_mesh_object_list = []
+    blend_mesh_object_dict = dict()
     #mesh_obj_build
     for mesh in vrm_meshes:
         msh = bpy.data.meshes.new(mesh.name)
         msh.from_pydata(mesh.POSITION, [], mesh.face_indices.tolist())
         msh.update()
         obj = bpy.data.objects.new(mesh.name, msh)
-        blend_mesh_object_list.append(obj)
+        if not mesh.mesh_id in blend_mesh_object_dict.keys():
+            blend_mesh_object_dict[mesh.mesh_id] = [obj]
+        else: 
+            blend_mesh_object_dict[mesh.mesh_id].append(obj)
         #kuso of kuso
         origin = None
         for key,node in origin_bone.items():
@@ -373,21 +376,33 @@ def main(model_path):
     
     #cleaning
     bpy.ops.object.select_all(action="DESELECT")
-    for obj in blend_mesh_object_list:
-        obj.select = True
-        bpy.ops.object.shade_smooth()
-        bpy.context.scene.objects.active = obj
-        bpy.ops.object.mode_set(mode='EDIT')
-        bpy.ops.mesh.delete_loose()
-        bpy.ops.mesh.select_all()
-        bpy.ops.mesh.remove_doubles(use_unselected= True)
-        bpy.ops.object.mode_set(mode='OBJECT')
-        obj.select = False
+    for objs in blend_mesh_object_dict.values():
+        for obj in objs:
+            obj.select = True
+            bpy.ops.object.shade_smooth()
+            bpy.context.scene.objects.active = obj
+            bpy.ops.object.mode_set(mode='EDIT')
+            bpy.ops.mesh.delete_loose()
+            bpy.ops.mesh.select_all()
+            bpy.ops.mesh.remove_doubles(use_unselected= True)
+            bpy.ops.object.mode_set(mode='OBJECT')
+            obj.select = False
+
+    #join primitives
+    joined_objects = []
+    bpy.ops.object.select_all(action="DESELECT")
+    for objs in blend_mesh_object_dict.values():
+        bpy.context.scene.objects.active = objs[0]
+        for obj in objs:
+            obj.select = True
+        bpy.ops.object.join()
+        bpy.ops.object.select_all(action="DESELECT")
+        joined_objects.append(bpy.context.active_object)
 
     #axis 
     bpy.ops.object.mode_set(mode='OBJECT')
     bpy.ops.object.select_all(action="DESELECT")
-    for obj in blend_mesh_object_list:
+    for obj in  joined_objects:
         if obj.parent_type == 'BONE':#ボーンにくっ付いて動くのは無視:なんか吹っ飛ぶ髪の毛がいる?
             continue
         bpy.context.scene.objects.active = obj

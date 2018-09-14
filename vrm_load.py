@@ -86,6 +86,9 @@ def main(model_path):
         binaly.set_pos(bufferViews[image_prop["bufferView"]]["byteOffset"])
         image_binary = binaly.read_binaly(bufferViews[image_prop["bufferView"]]["byteLength"])
         image_type = image_prop["mimeType"].split("/")[-1]
+        if image_name == "":
+            print("no name image")
+            image_name = "texture_" + str(id)
         image_path = os.path.join(vrm_dir_path, image_name + "." + image_type)
         if not os.path.exists(image_path):#すでに同名の画像がある場合は上書きしない
             with open(image_path, "wb") as imageWriter:
@@ -128,12 +131,8 @@ def main(model_path):
                     data_list.append(data)
                 return data_list
             vertex_attributes = primitive["attributes"]
-            #頂点属性が追加されたらここに書き足す↓(実装によっては存在しない属性もあるし、UVやｽｷﾆﾝｸﾞ情報は0->Nで増やせるが今は決め打ち)
-            vertex_attributes_name =["POSITION","NORMAL","TANGENT","TEXCOORD_0","JOINTS_0","WEIGHTS_0"]
-            for attr in vertex_attributes_name:
-                if not attr in vertex_attributes:
-                    print("this vrm_mesh {} doesn't have {} key".format(vrm_mesh.name,attr))
-                    continue
+            #頂点属性は実装によっては存在しない属性（例えばKOINTSやWEIGHTSがなかったりもする）もあるし、UVやｽｷﾆﾝｸﾞ情報は0->Nで増やせる（読み込み側は1個しかない前提だけど。。。）)
+            for attr in vertex_attributes.keys():
                 accessor = accessors[vertex_attributes[attr]]
                 vrm_mesh.addAttribute({attr:verts_attr_fuctory(accessor)})
             #TEXCOORD_FIX [ 古いuniVRM誤り: uv.y = -uv.y ->修復 uv.y = 1 - ( -uv.y ) => uv.y=1+uv.y]

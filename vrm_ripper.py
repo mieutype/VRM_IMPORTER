@@ -38,6 +38,8 @@ if messagebox.askyesno(message = "rip images?"):
             image_name = image_prop["extra"]["name"]
         else :
             image_name = image_prop["name"]
+        if image_name == "":
+            image_name = "texture_" +str(id)
         binaly.set_pos(bufferViews[image_prop["bufferView"]]["byteOffset"])
         image_binary = binaly.read_binaly(bufferViews[image_prop["bufferView"]]["byteLength"])
         image_type = image_prop["mimeType"].split("/")[-1]

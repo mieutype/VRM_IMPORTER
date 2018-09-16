@@ -398,25 +398,28 @@ def main(model_path):
         bpy.ops.object.select_all(action="DESELECT")
         joined_objects.append(bpy.context.active_object)
 
-    #axis 
-    bpy.ops.object.mode_set(mode='OBJECT')
-    bpy.ops.object.select_all(action="DESELECT")
-    for obj in  joined_objects:
-        if obj.parent_type == 'BONE':#ボーンにくっ付いて動くのは無視:なんか吹っ飛ぶ髪の毛がいる?
-            continue
-        bpy.context.scene.objects.active = obj
-        obj.select = True
-        obj.rotation_mode = "XYZ"
-        obj.rotation_euler[0] = numpy.deg2rad(90)
-        obj.rotation_euler[2] = numpy.deg2rad(-90)
-        bpy.ops.object.transform_apply(rotation=True)
-        obj.select = False
+    #axis armature->>boneの順でやらないと不具合
     bpy.context.scene.objects.active = amt
     amt.select = True
     amt.rotation_mode = "XYZ"
     amt.rotation_euler[0] = numpy.deg2rad(90)
     amt.rotation_euler[2] = numpy.deg2rad(-90)
     bpy.ops.object.transform_apply(rotation=True)
+    bpy.ops.object.mode_set(mode='OBJECT')
+    bpy.ops.object.select_all(action="DESELECT")
+    for obj in  joined_objects:
+        bpy.context.scene.objects.active = obj
+        obj.select = True
+        if obj.parent_type == 'BONE':#ボーンにくっ付いて動くのは無視:なんか吹っ飛ぶ髪の毛がいる?
+            bpy.ops.object.transform_apply(rotation=True)
+            print("bone parent objeeeeeeect {}".format(obj.name))
+            continue
+        obj.rotation_mode = "XYZ"
+        obj.rotation_euler[0] = numpy.deg2rad(90)
+        obj.rotation_euler[2] = numpy.deg2rad(-90)
+        bpy.ops.object.transform_apply(rotation=True)
+        obj.select = False
+
     
     
     

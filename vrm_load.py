@@ -219,7 +219,7 @@ def main(model_path):
         if id == -1:
             pass
         else:
-            vb = vrm_bones_copy.pop(id)
+            vb = vrm_bones[id]
             b = amt.data.edit_bones.new(vb.name)
             if parentID == -1:
                 parentPos = [0,0,0]
@@ -227,12 +227,14 @@ def main(model_path):
                 parentPos = bones[parentID].head
             b.head = numpy.array(parentPos)+numpy.array(vb.position)
             #temprary tail pos(gltf doesn't have bone. it defines as joints )
+            def vector_length(bone_vector):
+                return sqrt(pow(bone_vector[0],2)+pow(bone_vector[1],2)+pow(bone_vector[2],2))
             #gltfは関節で定義されていて骨の長さとか向きとかないからまあなんかそれっぽい方向にボーンを向けて伸ばしたり縮めたり
             if vb.children == None:
                 if parentID == -1:#唯我独尊：上向けとけ
                     b.tail = [b.head[0],b.head[1]+0.05,b.head[2]]
                 else:#normalize lenght to 0.03　末代：親から距離をちょっととる感じ
-                    lengh = sqrt(pow(vb.position[0],2)+pow(vb.position[1],2)+pow(vb.position[2],2))
+                    lengh = vector_length(vb.position)
                     lengh *= 30
                     if lengh <= 0.01:#0除算除けと気分
                         lengh =0.01
@@ -251,7 +253,10 @@ def main(model_path):
                 mean_relate_pos[0] /= count
                 mean_relate_pos[1] /= count
                 mean_relate_pos[2] /= count
+                if vector_length(mean_relate_pos) == 0:#子の位置の平均が根本と同じなら上向けとく
+                    mean_relate_pos[1] +=0.1
                 b.tail = [b.head[0]+mean_relate_pos[0],b.head[1]+mean_relate_pos[1],b.head[2]+mean_relate_pos[2]]
+
                     
             #end tail pos    
             bones[id] = b
@@ -261,9 +266,9 @@ def main(model_path):
                     for x in vb.children:
                         bone_chain(x,id)
             return 0
-    vrm_bones_copy = copy.deepcopy(vrm_bones)
-    while len(vrm_bones_copy.keys()):
-        bone_chain(list(vrm_bones_copy.keys())[0],-1)
+    rootnodes = [node for scene in vrm_parsed_json["scenes"] for node in scene["nodes"]] #scenesのなかのsceneのなかのnodesのﾘｽﾄを展開
+    while len(rootnodes):
+        bone_chain(rootnodes.pop(),-1)
     #call when bone built    
     bpy.context.scene.update()
     bpy.ops.object.mode_set(mode='OBJECT')

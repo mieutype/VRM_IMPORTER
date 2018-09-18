@@ -188,10 +188,8 @@ def main(model_path):
                 data.append(binaly.read_as_dataType(accessor["componentType"]))
             data_list.append(data)
         return data_list
-    vrm_skins_inverseBindMatrices_list = []
     vrm_skins_nodes_list = []
-    #inverseBindMatrices: 単にｽｷﾆﾝｸﾞするときの逆行列。
-    #省略されることもある。正直読み込み不要(自前計算できるので)
+    #inverseBindMatrices: 単にｽｷﾆﾝｸﾞするときの逆行列。読み込み不要(自前計算できるので)
     #joints:JOINTS_0の指定node番号のindex
     for skin in vrm_parsed_json["skins"]:
         #accessor = accessors[skin["inverseBindMatrices"]]
@@ -243,19 +241,15 @@ def main(model_path):
                         posDiff[1] += 0.01 #ボーンの長さが0だとOBJECT MODEに戻った時にボーンが消えるので上向けとく
                     b.tail = [b.head[0]+posDiff[0],b.head[1]+posDiff[1],b.head[2]+posDiff[2]]
             else:#子供たちの方向の中間を見る
-                mean_relate_pos = [0,0,0]
+                mean_relate_pos = numpy.array([0.0,0.0,0.0],dtype=numpy.float)
                 count=0
                 for childID in vb.children:
                     count +=1
-                    mean_relate_pos[0] += vrm_bones[childID].position[0]
-                    mean_relate_pos[1] += vrm_bones[childID].position[1]
-                    mean_relate_pos[2] += vrm_bones[childID].position[2]
-                mean_relate_pos[0] /= count
-                mean_relate_pos[1] /= count
-                mean_relate_pos[2] /= count
+                    mean_relate_pos += vrm_bones[childID].position
+                mean_relate_pos = mean_relate_pos / count
                 if vector_length(mean_relate_pos) == 0:#子の位置の平均が根本と同じなら上向けとく
                     mean_relate_pos[1] +=0.1
-                b.tail = [b.head[0]+mean_relate_pos[0],b.head[1]+mean_relate_pos[1],b.head[2]+mean_relate_pos[2]]
+                b.tail =[b.head[0]+mean_relate_pos[0],b.head[1]+mean_relate_pos[1],b.head[2]+mean_relate_pos[2]]
 
                     
             #end tail pos    
@@ -346,14 +340,21 @@ def main(model_path):
         
         # uv
         flatten_vrm_mesh_vert_index = mesh.face_indices.flatten()
-        channnel_name = "TEXCOORD_0"
-        msh.uv_textures.new(channnel_name)
-        blen_uv_data = msh.uv_layers[channnel_name].data
-        for id,v_index in enumerate(flatten_vrm_mesh_vert_index):
-            blen_uv_data[id].uv = mesh.TEXCOORD_0[v_index]
-            #blender axisnaize(上下反転)
-            blen_uv_data[id].uv[0] =blen_uv_data[id].uv[0]
-            blen_uv_data[id].uv[1] =blen_uv_data[id].uv[1]*-1+1
+        texcoord_num = 0
+        while True:
+            channnel_name = "TEXCOORD_" + str(texcoord_num)
+            if hasattr(mesh,channnel_name):
+                msh.uv_textures.new(channnel_name)
+                blen_uv_data = msh.uv_layers[channnel_name].data
+                vrm_texcoord  = getattr(mesh,channnel_name)
+                for id,v_index in enumerate(flatten_vrm_mesh_vert_index):
+                    blen_uv_data[id].uv = vrm_texcoord[v_index]
+                    #blender axisnaize(上下反転)
+                    blen_uv_data[id].uv[1] = blen_uv_data[id].uv[1] * -1 + 1
+                texcoord_num += 1
+            else:
+                break
+
         #material
         obj.data.materials.append(mat_dict[mesh.material_index])
 
@@ -361,8 +362,12 @@ def main(model_path):
         def absolutaize_morph_Positions(basePoints,morphTargetpos):
             shape_key_Positions = []
             for basePos,morphPos in zip(basePoints,morphTargetpos):
-                #numpyのarrayの加算は連結ではなく、要素ごとの加算
-                shape_key_Positions.append(numpy.array(basePos) + numpy.array(morphPos))
+                #numpy.array毎回作るのは見た目きれいだけど8倍くらい遅い
+                shape_key_Positions.append([
+                    basePos[0] + morphPos[0],
+                    basePos[1] + morphPos[1],
+                    basePos[2] + morphPos[2]
+                ])
             return shape_key_Positions
         #shapeKeys
         if hasattr(mesh,"morphTargetDict"):
@@ -373,7 +378,7 @@ def main(model_path):
                 shape_data = absolutaize_morph_Positions(mesh.POSITION,morphPos)
                 for i,co in enumerate(shape_data):
                     keyblock.data[i].co = co
-
+    #mesh build end
     #json dump
     textblock = bpy.data.texts.new("{}.json".format(vrm_parsed_json["extensions"]["VRM"]["meta"]["title"]))
     textblock.write(json.dumps(vrm_parsed_json,indent = 4))

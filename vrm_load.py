@@ -60,7 +60,7 @@ def parse_glb(data: bytes):
 
 #あくまでvrmをpythonデータ化するだけで、blender型に変形はここではしない（といったが現状それは嘘だ
 def main(model_path):
-    #datachunkは一つしかない前提
+    #datachunkは一つしかない
     vrm_parsed_json, body_binary = None,None
     with open(model_path, 'rb') as f:
         vrm_parsed_json, body_binary = parse_glb(f.read())
@@ -131,15 +131,24 @@ def main(model_path):
                     data_list.append(data)
                 return data_list
             vertex_attributes = primitive["attributes"]
-            #頂点属性は実装によっては存在しない属性（例えばKOINTSやWEIGHTSがなかったりもする）もあるし、UVやｽｷﾆﾝｸﾞ情報は0->Nで増やせる（読み込み側は1個しかない前提だけど。。。）)
+            #頂点属性は実装によっては存在しない属性（例えばJOINTSやWEIGHTSがなかったりもする）もあるし、UVや頂点カラー0->Nで増やせる（ｽｷﾆﾝｸﾞは1要素(ﾎﾞｰﾝ4本)限定
             for attr in vertex_attributes.keys():
                 accessor = accessors[vertex_attributes[attr]]
                 vrm_mesh.addAttribute({attr:verts_attr_fuctory(accessor)})
             #TEXCOORD_FIX [ 古いuniVRM誤り: uv.y = -uv.y ->修復 uv.y = 1 - ( -uv.y ) => uv.y=1+uv.y]
             #uvは0-1にある前提で、マイナスであれば変換ミスとみなす
-            for uv in vrm_mesh.TEXCOORD_0:
-                if uv[1] < 0:
-                    uv[1] = 1 + uv[1]
+            uv_count = 0
+            while True:
+                texcoordName = "TEXCOORD_{}".format(uv_count)
+                if hasattr(vrm_mesh, texcoordName): 
+                    texcoord = getattr(vrm_mesh,texcoordName)
+                    for uv in texcoord:
+                        if uv[1] < 0:
+                            uv[1] = 1 + uv[1]
+                    uv_count +=1
+                else:
+                    break
+
             #blenderとは上下反対のuv,それはblenderに書き込むときに直す
 
             #マテリアルの場所を記録
@@ -165,41 +174,29 @@ def main(model_path):
 
     #node(ボーン)をﾊﾟｰｽする->親からの相対位置で記録されている
     vrm_bones = dict()
-    origin_bone = dict()
+    vrm_origin_bone = dict()
     for i,bone in enumerate(vrm_parsed_json["nodes"]):
         vrm_bones[i]=VRM_Types.Bone(bone)
         #TODO こっからorigine_bone
         if "mesh" in bone.keys():
-            origin_bone[i] = [vrm_bones[i],bone["mesh"]]
+            vrm_origin_bone[i] = [vrm_bones[i],bone["mesh"]]
             if "skin" in bone.keys():
-                origin_bone[i].append(bone["skin"])
+                vrm_origin_bone[i].append(bone["skin"])
             else:
                 print(bone["name"] + "is not have skin")
-    #TODO　skinをパースしてみる　->バイナリの中身はskining実装の横着用
-    #TODO  skinのjointsの(nodesの)indexをvertsのjoints_0は指定してる
-    def skin_attr_fuctory(accessor):  #data_lenghtは2以上(常にﾘｽﾄを返す)を想定
-        type_num_dict = {"SCALAR":1,"VEC2":2,"VEC3":3,"VEC4":4,"MAT4":16}
-        type_num = type_num_dict[accessor["type"]]
-        binaly.set_pos(bufferViews[accessor["bufferView"]]["byteOffset"])
-        data_list = []
-        for num in range(accessor["count"]):
-            data = []
-            for l in range(type_num):
-                data.append(binaly.read_as_dataType(accessor["componentType"]))
-            data_list.append(data)
-        return data_list
+    #skinをパース　->バイナリの中身はskining実装の横着用
+    #skinのjointsの(nodesの)indexをvertsのjoints_0は指定してる
     vrm_skins_nodes_list = []
-    #inverseBindMatrices: 単にｽｷﾆﾝｸﾞするときの逆行列。読み込み不要(自前計算できるので)
+    #inverseBindMatrices: 単にｽｷﾆﾝｸﾞするときの逆行列。読み込み不要なのでしない(自前計算もできる、めんどいけど)
     #joints:JOINTS_0の指定node番号のindex
     for skin in vrm_parsed_json["skins"]:
-        #accessor = accessors[skin["inverseBindMatrices"]]
-        #vrm_skins_inverseBindMatrices_list.append(numpy.reshape(skin_attr_fuctory(accessor),(-1,4,4)))
         vrm_skins_nodes_list.append(skin["joints"])
 
 
     
 
 #-------------------------------bpy zone  別クラスにしたい--------------------
+    bpy.ops.object.select_all(action="DESELECT")
     #image_path_to Texture
     textures = []
     for image_props in vrm_image_props_list:
@@ -293,9 +290,9 @@ def main(model_path):
             blend_mesh_object_dict[mesh.mesh_id] = [obj]
         else: 
             blend_mesh_object_dict[mesh.mesh_id].append(obj)
-        #kuso of kuso
+        #kuso of kuso kakugosiro
         origin = None
-        for key,node in origin_bone.items():
+        for key,node in vrm_origin_bone.items():
             if node[1] == mesh.mesh_id:
                 obj.location = node[0].position
                 if len(node) == 3:

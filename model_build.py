@@ -6,8 +6,11 @@ import json
 
 
 def vrm_model_build(vrm_model):
-    bpy.ops.object.mode_set(mode='OBJECT')
-    bpy.ops.object.select_all(action="DESELECT")
+    #init
+    if bpy.context.active_object != None:
+        bpy.ops.object.mode_set(mode='OBJECT')
+        bpy.ops.object.select_all(action="DESELECT")
+        
     #image_path_to Texture
     textures = []
     for image_props in vrm_model.image_propaties:

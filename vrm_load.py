@@ -145,7 +145,7 @@ def mesh_read(vrm_model):
             #頂点属性は実装によっては存在しない属性（例えばJOINTSやWEIGHTSがなかったりもする）もあるし、UVや頂点カラー0->Nで増やせる（ｽｷﾆﾝｸﾞは1要素(ﾎﾞｰﾝ4本)限定
             for attr in vertex_attributes.keys():
                 accessor = accessors[vertex_attributes[attr]]
-                vrm_mesh.addAttribute({attr:verts_attr_fuctory(accessor)})
+                vrm_mesh.__setattr__(attr,verts_attr_fuctory(accessor))
             #TEXCOORD_FIX [ 古いuniVRM誤り: uv.y = -uv.y ->修復 uv.y = 1 - ( -uv.y ) => uv.y=1+uv.y]
             #uvは0-1にある前提で、マイナスであれば変換ミスとみなす
             uv_count = 0
@@ -174,7 +174,7 @@ def mesh_read(vrm_model):
                         morphTargetDict[primitive["targets"][i]["extra"]["name"]] = posArray
                     else:
                         morphTargetDict[primitive["extras"]["targetNames"][i]] = posArray
-                vrm_mesh.addAttribute({"morphTargetDict":morphTargetDict})
+                vrm_mesh.__setattr__("morphTargetDict",morphTargetDict)
 
             vrm_model.meshes.append(vrm_mesh)
 

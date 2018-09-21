@@ -4,12 +4,32 @@ Released under the MIT license
 https://opensource.org/licenses/mit-license.php
 
 """
+class VRM_model:
+    def __init__(
+            self,filepath = None,json = None,binaryReader = None,
+            image_propaties = [],meshes =[],materials = [],
+            bones_dict = {},origine_bones_dict = {}, skins_joints_list = []
+            ):
+        self.filepath = filepath
+        self.json = json
+        self.binaryReader = binaryReader
+        self.image_propaties = image_propaties
+        self.meshes = meshes
+        self.materials = materials
+        self.bones_dict = bones_dict
+        self.origine_bones_dict = origine_bones_dict
+        self.skins_joints_list = skins_joints_list
+
+
+
+
 
 class Mesh:
     def __init__(self):
         self.name = ""
         self.face_indices = []
         self.skin_id = None
+        self.mesh_object_id = None
     def addAttribute(self,dic):
         for key,val in dic.items():
             setattr(self,key,val)

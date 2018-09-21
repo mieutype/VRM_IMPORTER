@@ -7,7 +7,7 @@ https://opensource.org/licenses/mit-license.php
 
 import bpy
 from bpy_extras.io_utils import ImportHelper
-from . import vrm_load
+from . import vrm_load,model_build
 import os
 
 
@@ -38,7 +38,7 @@ class ImportVRM(bpy.types.Operator,ImportHelper):
  
     def execute(self,context):
         fdir = self.filepath
-        vrm_load.main(fdir)
+        model_build.vrm_model_build(vrm_load.read_vrm(fdir))
         return {'FINISHED'}
 
 

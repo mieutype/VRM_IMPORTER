@@ -35,7 +35,12 @@ class ImportVRM(bpy.types.Operator,ImportHelper):
     bl_description = "import VRM"
     bl_options = {'REGISTER', 'UNDO'}
 
- 
+    filename_ext = '.vrm'
+    filter_glob = bpy.props.StringProperty(
+        default='*.vrm',
+        options={'HIDDEN'}
+    )
+
     def execute(self,context):
         fdir = self.filepath
         model_build.vrm_model_build(vrm_load.read_vrm(fdir))

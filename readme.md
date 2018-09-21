@@ -12,7 +12,8 @@
 
 ## 内容説明
 -  \_\_init\_\_.py ：blenderのaddonシステム接続する<br>
--  vrm_load.py ： importer本体。砂上の楼閣レベルの品、特にblenderに書き込む側<br>
+-  vrm_load.py ： vrmファイルからpythonのデータにする。<br>
+-  model_build.py pythonデータをblenderに書き込む。砂上の楼閣レベルの品、特にblenderに書き込む側<br>
 -  binaly_loader： 名前の通り。上の補助。<br>
 -  V_Types.py： 文字通りの構造体が複数<br>
 -  gl_const.py：定数集<br>

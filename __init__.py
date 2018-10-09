@@ -26,9 +26,6 @@ bl_info = {
 }
 
 
-
-
-
 class ImportVRM(bpy.types.Operator,ImportHelper):
     bl_idname = "import.vrm"
     bl_label = "import VRM"
@@ -40,6 +37,8 @@ class ImportVRM(bpy.types.Operator,ImportHelper):
         default='*.vrm',
         options={'HIDDEN'}
     )
+
+
 
     def execute(self,context):
         fdir = self.filepath
@@ -53,7 +52,7 @@ def menu_import(self, context):
 
 # アドオン有効化時の処理
 def register():
-    bpy.utils.register_module(__name__)
+    bpy.utils.register_class(ImportVRM)
     bpy.types.INFO_MT_file_import.append(menu_import)
  
 
@@ -61,7 +60,7 @@ def register():
 # アドオン無効化時の処理
 def unregister():
     bpy.types.INFO_MT_file_import.remove(menu_import)
-    bpy.utils.unregister_module(__name__)
+    bpy.utils.unregister_class(ImportVRM)
 
 if "__main__" == __name__:
     register()

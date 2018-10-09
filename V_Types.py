@@ -4,7 +4,7 @@ Released under the MIT license
 https://opensource.org/licenses/mit-license.php
 
 """
-class VRM_model(object):
+class VRM_pydata(object):
     def __init__(
             self,
             filepath = None,json = None,binaryReader = None,
@@ -32,19 +32,12 @@ class Mesh(object):
 
 
 class Bone(object):
-    def __init__(self,node):
-        self.name = node["name"]
-        self.position = node["translation"]
-        self.rotation = node["rotation"]
-        self.scale = node["scale"]
-        if "children" in node:
-            if type(node["children"]) is int:
-                self.children = []
-                self.children.append(node["children"])
-            else:
-                self.children = node["children"]
-        else:
-            self.children = None
+    def __init__(self):
+        self.name = ""
+        self.position = None
+        self.rotation = None
+        self.scale = None
+        self.children = None
 
 
 
@@ -58,18 +51,16 @@ class Image_props(object):
 
 
 class Material(object):
-    def __init__(self,material):
-        self.name = material["name"]
+    def __init__(self):
+        self.name = ""
         self.base_color = (1,1,1,1)
         self.color_texture_index = None
         self.color_texcoord_index = None
         self.normal_texture_index = None
+        self.normal_texcoord = None
         self.displace_texture_index = None
-        if "pbrMetallicRoughness" in material:
-            self.color_texture_index = material["pbrMetallicRoughness"]["baseColorTexture"]["index"]
-            self.color_texcoord_index= material["pbrMetallicRoughness"]["baseColorTexture"]["texCoord"]
-            if "baseColorFactor" in material["pbrMetallicRoughness"]:
-                self.base_color = material["pbrMetallicRoughness"]["baseColorFactor"]
+        self.displace_texcoord = None
+        self.doubleSided = True
 
 if "__main__" == __name__:
     pass

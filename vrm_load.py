@@ -10,6 +10,7 @@ https://opensource.org/licenses/mit-license.php
 from .binaly_loader import Binaly_Reader
 from .gl_const import GL_CONSTANS as GLC
 from . import V_Types as VRM_Types
+from . import pydata_factory
 import os,re,copy
 from math import sqrt,pow
 import json
@@ -60,40 +61,40 @@ def parse_glb(data: bytes):
 
 #あくまでvrm(の特にバイナリ)をpythonデータ化するだけで、blender型に変形はここではしない
 def read_vrm(model_path):
-    vrm_model = VRM_Types.VRM_model(filepath=model_path)
+    vrm_pydata = VRM_Types.VRM_pydata(filepath=model_path)
     #datachunkは一つしかない
     with open(model_path, 'rb') as f:
-        vrm_model.json, body_binary = parse_glb(f.read())
-    vrm_model.binaryReader = Binaly_Reader(body_binary)
+        vrm_pydata.json, body_binary = parse_glb(f.read())
+    vrm_pydata.binaryReader = Binaly_Reader(body_binary)
     
     #改変不可ﾗｲｾﾝｽを撥ねる
-    if re.match("CC(.*)ND(.*)", vrm_model.json["extensions"]["VRM"]["meta"]["licenseName"]) is not None:
+    if re.match("CC(.*)ND(.*)", vrm_pydata.json["extensions"]["VRM"]["meta"]["licenseName"]) is not None:
         raise Exception("This VRM is not allowed to Edit. CHECK ITS LICENSE　改変不可Licenseです。")
     #オリジナルライセンスに対する注意
-    if vrm_model.json["extensions"]["VRM"]["meta"]["licenseName"] == "Other":
+    if vrm_pydata.json["extensions"]["VRM"]["meta"]["licenseName"] == "Other":
         print("Is this VRM allowed to Edit? CHECK IT LICENSE")
     
-    texture_rip(vrm_model)
-    mesh_read(vrm_model)
-    material_read(vrm_model)
-    node_read(vrm_model)
-    skin_read(vrm_model)
+    texture_rip(vrm_pydata)
+    mesh_read(vrm_pydata)
+    material_read(vrm_pydata)
+    node_read(vrm_pydata)
+    skin_read(vrm_pydata)
 
-    return vrm_model
+    return vrm_pydata
     
 
-def texture_rip(vrm_model):
-    bufferViews = vrm_model.json["bufferViews"]
-    accessors = vrm_model.json["accessors"]
+def texture_rip(vrm_pydata):
+    bufferViews = vrm_pydata.json["bufferViews"]
+    accessors = vrm_pydata.json["accessors"]
     #ここ画像切り出し #blenderはバイト列から画像を読み込む術がないので、画像ファイルを書き出して、それを読み込むしかない。
-    vrm_dir_path = os.path.dirname(os.path.abspath(vrm_model.filepath))
-    for id,image_prop in enumerate(vrm_model.json["images"]):
+    vrm_dir_path = os.path.dirname(os.path.abspath(vrm_pydata.filepath))
+    for id,image_prop in enumerate(vrm_pydata.json["images"]):
         if "extra" in image_prop:
             image_name = image_prop["extra"]["name"]
         else :
             image_name = image_prop["name"]
-        vrm_model.binaryReader.set_pos(bufferViews[image_prop["bufferView"]]["byteOffset"])
-        image_binary = vrm_model.binaryReader.read_binaly(bufferViews[image_prop["bufferView"]]["byteLength"])
+        vrm_pydata.binaryReader.set_pos(bufferViews[image_prop["bufferView"]]["byteOffset"])
+        image_binary = vrm_pydata.binaryReader.read_binaly(bufferViews[image_prop["bufferView"]]["byteLength"])
         image_type = image_prop["mimeType"].split("/")[-1]
         if image_name == "":
             image_name = "texture_" + str(id)
@@ -105,13 +106,13 @@ def texture_rip(vrm_model):
         else:
             print(image_name + " Image is already exists. NOT OVER WRITTEN")
         image_propaty = VRM_Types.Image_props(image_name,image_path,image_type)
-        vrm_model.image_propaties.append(image_propaty)
+        vrm_pydata.image_propaties.append(image_propaty)
 
-def mesh_read(vrm_model):
-    bufferViews = vrm_model.json["bufferViews"]
-    accessors = vrm_model.json["accessors"]
+def mesh_read(vrm_pydata):
+    bufferViews = vrm_pydata.json["bufferViews"]
+    accessors = vrm_pydata.json["accessors"]
     #メッシュをパースする
-    for n,mesh in enumerate(vrm_model.json["meshes"]):
+    for n,mesh in enumerate(vrm_pydata.json["meshes"]):
         for j,primitive in enumerate(mesh["primitives"]):  
             vrm_mesh = VRM_Types.Mesh()
             vrm_mesh.mesh_object_id = n
@@ -122,9 +123,9 @@ def mesh_read(vrm_model):
                 
             #まず、頂点indexを読む
             accessor = accessors[primitive["indices"]]
-            vrm_model.binaryReader.set_pos(bufferViews[accessor["bufferView"]]["byteOffset"])
+            vrm_pydata.binaryReader.set_pos(bufferViews[accessor["bufferView"]]["byteOffset"])
             for v in range(accessor["count"]):
-                vrm_mesh.face_indices.append(vrm_model.binaryReader.read_as_dataType(accessor["componentType"]))
+                vrm_mesh.face_indices.append(vrm_pydata.binaryReader.read_as_dataType(accessor["componentType"]))
             #3要素ずつに変換しておく(GCL.TRIANGLES前提なので)
             #ＡＴＴＥＮＴＩＯＮ　これだけndarray
             vrm_mesh.face_indices = numpy.reshape(vrm_mesh.face_indices, (-1, 3))
@@ -133,12 +134,12 @@ def mesh_read(vrm_model):
             def verts_attr_fuctory(accessor):  #data_lenghtは2以上(常にﾘｽﾄを返す)を想定
                 type_num_dict = {"SCALAR":1,"VEC2":2,"VEC3":3,"VEC4":4,"MAT4":16}
                 type_num = type_num_dict[accessor["type"]]
-                vrm_model.binaryReader.set_pos(bufferViews[accessor["bufferView"]]["byteOffset"])
+                vrm_pydata.binaryReader.set_pos(bufferViews[accessor["bufferView"]]["byteOffset"])
                 data_list = []
                 for num in range(accessor["count"]):
                     data = []
                     for l in range(type_num):
-                        data.append(vrm_model.binaryReader.read_as_dataType(accessor["componentType"]))
+                        data.append(vrm_pydata.binaryReader.read_as_dataType(accessor["componentType"]))
                     data_list.append(data)
                 return data_list
             vertex_attributes = primitive["attributes"]
@@ -176,24 +177,29 @@ def mesh_read(vrm_model):
                         morphTargetDict[primitive["extras"]["targetNames"][i]] = posArray
                 vrm_mesh.__setattr__("morphTargetDict",morphTargetDict)
 
-            vrm_model.meshes.append(vrm_mesh)
+            vrm_pydata.meshes.append(vrm_mesh)
 
 
     #ここからマテリアル
-def material_read(vrm_model):
-    for mat in vrm_model.json["materials"]:
-        vrm_model.materials.append( VRM_Types.Material(mat))
+def material_read(vrm_pydata):
+    VRM_EXTENSION_material_promaties = None
+    try:
+        VRM_EXTENSION_material_promaties = vrm_pydata.json["extensions"]["VRM"]["materialProperties"]
+    except Exception as e:
+        print(e)
+    for mat in vrm_pydata.json["materials"]:
+        vrm_pydata.materials.append(pydata_factory.material(mat,VRM_EXTENSION_material_promaties))
 
 
     #node(ボーン)をﾊﾟｰｽする->親からの相対位置で記録されている
-def node_read(vrm_model):
-    for i,bone in enumerate(vrm_model.json["nodes"]):
-        vrm_model.bones_dict[i]=VRM_Types.Bone(bone)
+def node_read(vrm_pydata):
+    for i,bone in enumerate(vrm_pydata.json["nodes"]):
+        vrm_pydata.bones_dict[i] = pydata_factory.bone(bone)
         #TODO こっからorigine_bone
         if "mesh" in bone.keys():
-            vrm_model.origine_bones_dict[i] = [vrm_model.bones_dict[i],bone["mesh"]]
+            vrm_pydata.origine_bones_dict[i] = [vrm_pydata.bones_dict[i],bone["mesh"]]
             if "skin" in bone.keys():
-                vrm_model.origine_bones_dict[i].append(bone["skin"])
+                vrm_pydata.origine_bones_dict[i].append(bone["skin"])
             else:
                 print(bone["name"] + "is not have skin")
 
@@ -201,9 +207,9 @@ def node_read(vrm_model):
     #skinのjointsの(nodesの)indexをvertsのjoints_0は指定してる
     #inverseBindMatrices: 単にｽｷﾆﾝｸﾞするときの逆行列。読み込み不要なのでしない(自前計算もできる、めんどいけど)
     #joints:JOINTS_0の指定node番号のindex
-def skin_read(vrm_model):
-    for skin in vrm_model.json["skins"]:
-        vrm_model.skins_joints_list.append(skin["joints"])
+def skin_read(vrm_pydata):
+    for skin in vrm_pydata.json["skins"]:
+        vrm_pydata.skins_joints_list.append(skin["joints"])
 
 
 

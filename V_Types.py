@@ -27,7 +27,7 @@ class Mesh(object):
         self.name = ""
         self.face_indices = []
         self.skin_id = None
-        self.mesh_object_id = None
+        self.object_id = None
 
 
 

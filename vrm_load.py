@@ -115,7 +115,7 @@ def mesh_read(vrm_pydata):
     for n,mesh in enumerate(vrm_pydata.json["meshes"]):
         for j,primitive in enumerate(mesh["primitives"]):  
             vrm_mesh = VRM_Types.Mesh()
-            vrm_mesh.mesh_object_id = n
+            vrm_mesh.object_id = n
             vrm_mesh.name = mesh["name"]+str(j)
             if primitive["mode"] != GLC.TRIANGLES:
                 #TODO その他ﾒｯｼｭﾀｲﾌﾟ対応

@@ -95,19 +95,19 @@ def vrm_model_build(vrm_pydata):
     
     blend_mesh_object_dict = dict()
     #mesh_obj_build
-    for mesh in vrm_pydata.meshes:
-        msh = bpy.data.meshes.new(mesh.name)
-        msh.from_pydata(mesh.POSITION, [], mesh.face_indices.tolist())
-        msh.update()
-        obj = bpy.data.objects.new(mesh.name, msh)
-        if not mesh.mesh_object_id in blend_mesh_object_dict.keys():
-            blend_mesh_object_dict[mesh.mesh_object_id] = [obj]
+    for pymesh in vrm_pydata.meshes:
+        b_mesh = bpy.data.meshes.new(pymesh.name)
+        b_mesh.from_pydata(pymesh.POSITION, [], pymesh.face_indices.tolist())
+        b_mesh.update()
+        obj = bpy.data.objects.new(pymesh.name, b_mesh)
+        if not pymesh.object_id in blend_mesh_object_dict.keys():
+            blend_mesh_object_dict[pymesh.object_id] = [obj]
         else: 
-            blend_mesh_object_dict[mesh.mesh_object_id].append(obj)
+            blend_mesh_object_dict[pymesh.object_id].append(obj)
         #kuso of kuso kakugosiro
         origin = None
         for key,node in vrm_pydata.origine_bones_dict.items():
-            if node[1] == mesh.mesh_object_id:
+            if node[1] == pymesh.object_id:
                 obj.location = node[0].position
                 if len(node) == 3:
                     origin = node
@@ -126,9 +126,9 @@ def vrm_model_build(vrm_pydata):
                 obj.vertex_groups.new(vrm_pydata.bones_dict[n_index].name)
                 vg_list.append(obj.vertex_groups[-1])
             # VertexGroupに頂点属性から一個ずつｳｪｲﾄを入れる用の辞書作り
-            if hasattr(mesh,"JOINTS_0") and hasattr(mesh,"WEIGHTS_0"):
+            if hasattr(pymesh,"JOINTS_0") and hasattr(pymesh,"WEIGHTS_0"):
                 vg_dict = {}
-                for v_index,(joint_ids,weights) in enumerate(zip(mesh.JOINTS_0,mesh.WEIGHTS_0)):
+                for v_index,(joint_ids,weights) in enumerate(zip(pymesh.JOINTS_0,pymesh.WEIGHTS_0)):
                     for joint_id,weight in zip(joint_ids,weights):
                         node_id = vrm_pydata.skins_joints_list[origin[2]][joint_id]
                         if vrm_pydata.bones_dict[node_id].name in vg_dict.keys():
@@ -152,14 +152,14 @@ def vrm_model_build(vrm_pydata):
         scene.objects.link(obj)
         
         # uv
-        flatten_vrm_mesh_vert_index = mesh.face_indices.flatten()
+        flatten_vrm_mesh_vert_index = pymesh.face_indices.flatten()
         texcoord_num = 0
         while True:
             channnel_name = "TEXCOORD_" + str(texcoord_num)
-            if hasattr(mesh,channnel_name):
-                msh.uv_textures.new(channnel_name)
-                blen_uv_data = msh.uv_layers[channnel_name].data
-                vrm_texcoord  = getattr(mesh,channnel_name)
+            if hasattr(pymesh,channnel_name):
+                b_mesh.uv_textures.new(channnel_name)
+                blen_uv_data = b_mesh.uv_layers[channnel_name].data
+                vrm_texcoord  = getattr(pymesh,channnel_name)
                 for id,v_index in enumerate(flatten_vrm_mesh_vert_index):
                     blen_uv_data[id].uv = vrm_texcoord[v_index]
                     #blender axisnaize(上下反転)
@@ -169,7 +169,7 @@ def vrm_model_build(vrm_pydata):
                 break
 
         #material
-        obj.data.materials.append(mat_dict[mesh.material_index])
+        obj.data.materials.append(mat_dict[pymesh.material_index])
 
 
         def absolutaize_morph_Positions(basePoints,morphTargetpos):
@@ -183,12 +183,12 @@ def vrm_model_build(vrm_pydata):
                 ])
             return shape_key_Positions
         #shapeKeys
-        if hasattr(mesh,"morphTargetDict"):
+        if hasattr(pymesh,"morphTargetDict"):
             obj.shape_key_add("Basis")
-            for morphName,morphPos in mesh.morphTargetDict.items():
+            for morphName,morphPos in pymesh.morphTargetDict.items():
                 obj.shape_key_add(morphName)
-                keyblock = msh.shape_keys.key_blocks[morphName]
-                shape_data = absolutaize_morph_Positions(mesh.POSITION,morphPos)
+                keyblock = b_mesh.shape_keys.key_blocks[morphName]
+                shape_data = absolutaize_morph_Positions(pymesh.POSITION,morphPos)
                 for i,co in enumerate(shape_data):
                     keyblock.data[i].co = co
     #mesh build end

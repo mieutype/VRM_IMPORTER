@@ -5,7 +5,7 @@ import numpy
 import json
 
 
-def vrm_model_build(vrm_model):
+def vrm_model_build(vrm_pydata):
     #init
     if bpy.context.active_object != None:
         bpy.ops.object.mode_set(mode='OBJECT')
@@ -13,7 +13,7 @@ def vrm_model_build(vrm_model):
         
     #image_path_to Texture
     textures = []
-    for image_props in vrm_model.image_propaties:
+    for image_props in vrm_pydata.image_propaties:
         img = bpy.data.images.load(image_props.filePath)
         tex = bpy.data.textures.new(image_props.name,"IMAGE")
         tex.image = img
@@ -22,13 +22,13 @@ def vrm_model_build(vrm_model):
     #build bones as armature
     bpy.ops.object.add(type='ARMATURE', enter_editmode=True, location=(0,0,0))
     amt = bpy.context.object
-    amt.name = vrm_model.json["extensions"]["VRM"]["meta"]["title"]
+    amt.name = vrm_pydata.json["extensions"]["VRM"]["meta"]["title"]
     bones = dict()
     def bone_chain(id,parentID):
-        if id == -1:
+        if id == -1:#自身がrootのrootの時
             pass
         else:
-            vb = vrm_model.bones_dict[id]
+            vb = vrm_pydata.bones_dict[id]
             b = amt.data.edit_bones.new(vb.name)
             if parentID == -1:
                 parentPos = [0,0,0]
@@ -56,7 +56,7 @@ def vrm_model_build(vrm_model):
                 count=0
                 for childID in vb.children:
                     count +=1
-                    mean_relate_pos += vrm_model.bones_dict[childID].position
+                    mean_relate_pos += vrm_pydata.bones_dict[childID].position
                 mean_relate_pos = mean_relate_pos / count
                 if vector_length(mean_relate_pos) == 0:#子の位置の平均が根本と同じなら上向けとく
                     mean_relate_pos[1] +=0.1
@@ -71,9 +71,9 @@ def vrm_model_build(vrm_model):
                     for x in vb.children:
                         bone_chain(x,id)
             return 0
-    rootnodes = [node for scene in vrm_model.json["scenes"] for node in scene["nodes"]] #scenesのなかのsceneのなかのnodesのﾘｽﾄを展開
-    while len(rootnodes):
-        bone_chain(rootnodes.pop(),-1)
+    root_nodes = [node for scene in vrm_pydata.json["scenes"] for node in scene["nodes"]] #scenesのなかのsceneのなかのnodesのﾘｽﾄを展開
+    while len(root_nodes):
+        bone_chain(root_nodes.pop(),-1)
     #call when bone built    
     bpy.context.scene.update()
     bpy.ops.object.mode_set(mode='OBJECT')
@@ -81,7 +81,7 @@ def vrm_model_build(vrm_model):
         
     #Material_datas　適当なので要調整
     mat_dict = dict()
-    for index,mat in enumerate(vrm_model.materials):
+    for index,mat in enumerate(vrm_pydata.materials):
         b_mat = bpy.data.materials.new(mat.name)
         b_mat.use_shadeless = True
         b_mat.diffuse_color = mat.base_color[0:3]
@@ -95,7 +95,7 @@ def vrm_model_build(vrm_model):
     
     blend_mesh_object_dict = dict()
     #mesh_obj_build
-    for mesh in vrm_model.meshes:
+    for mesh in vrm_pydata.meshes:
         msh = bpy.data.meshes.new(mesh.name)
         msh.from_pydata(mesh.POSITION, [], mesh.face_indices.tolist())
         msh.update()
@@ -106,7 +106,7 @@ def vrm_model_build(vrm_model):
             blend_mesh_object_dict[mesh.mesh_object_id].append(obj)
         #kuso of kuso kakugosiro
         origin = None
-        for key,node in vrm_model.origine_bones_dict.items():
+        for key,node in vrm_pydata.origine_bones_dict.items():
             if node[1] == mesh.mesh_object_id:
                 obj.location = node[0].position
                 if len(node) == 3:
@@ -121,20 +121,20 @@ def vrm_model_build(vrm_model):
         # vertex groupの作成
         if origin != None:
             vg_list = [] # VertexGroupのリスト
-            nodes_index_list = vrm_model.skins_joints_list[origin[2]]
+            nodes_index_list = vrm_pydata.skins_joints_list[origin[2]]
             for n_index in nodes_index_list:
-                obj.vertex_groups.new(vrm_model.bones_dict[n_index].name)
+                obj.vertex_groups.new(vrm_pydata.bones_dict[n_index].name)
                 vg_list.append(obj.vertex_groups[-1])
             # VertexGroupに頂点属性から一個ずつｳｪｲﾄを入れる用の辞書作り
             if hasattr(mesh,"JOINTS_0") and hasattr(mesh,"WEIGHTS_0"):
                 vg_dict = {}
                 for i,(joint_ids,weights) in enumerate(zip(mesh.JOINTS_0,mesh.WEIGHTS_0)):
                     for joint_id,weight in zip(joint_ids,weights):
-                        node_id = vrm_model.skins_joints_list[origin[2]][joint_id]
-                        if vrm_model.bones_dict[node_id].name in vg_dict.keys():
-                            vg_dict[vrm_model.bones_dict[node_id].name].append([i,weight])#2個目以降のｳｪｲﾄ
+                        node_id = vrm_pydata.skins_joints_list[origin[2]][joint_id]
+                        if vrm_pydata.bones_dict[node_id].name in vg_dict.keys():
+                            vg_dict[vrm_pydata.bones_dict[node_id].name].append([i,weight])#2個目以降のｳｪｲﾄ
                         else:
-                            vg_dict[vrm_model.bones_dict[node_id].name] = [[i,weight]]#1個目のｳｪｲﾄ（初期化兼）
+                            vg_dict[vrm_pydata.bones_dict[node_id].name] = [[i,weight]]#1個目のｳｪｲﾄ（初期化兼）
                 #頂点ﾘｽﾄに辞書から書き込む
                 for vg in vg_list:
                     if not vg.name in vg_dict.keys():
@@ -192,8 +192,8 @@ def vrm_model_build(vrm_model):
                     keyblock.data[i].co = co
     #mesh build end
     #json dump
-    textblock = bpy.data.texts.new("{}.json".format(vrm_model.json["extensions"]["VRM"]["meta"]["title"]))
-    textblock.write(json.dumps(vrm_model.json,indent = 4))
+    textblock = bpy.data.texts.new("{}.json".format(vrm_pydata.json["extensions"]["VRM"]["meta"]["title"]))
+    textblock.write(json.dumps(vrm_pydata.json,indent = 4))
     
     #cleaning
     bpy.ops.object.mode_set(mode='OBJECT')

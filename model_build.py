@@ -128,21 +128,22 @@ def vrm_model_build(vrm_pydata):
             # VertexGroupに頂点属性から一個ずつｳｪｲﾄを入れる用の辞書作り
             if hasattr(mesh,"JOINTS_0") and hasattr(mesh,"WEIGHTS_0"):
                 vg_dict = {}
-                for i,(joint_ids,weights) in enumerate(zip(mesh.JOINTS_0,mesh.WEIGHTS_0)):
+                for v_index,(joint_ids,weights) in enumerate(zip(mesh.JOINTS_0,mesh.WEIGHTS_0)):
                     for joint_id,weight in zip(joint_ids,weights):
                         node_id = vrm_pydata.skins_joints_list[origin[2]][joint_id]
                         if vrm_pydata.bones_dict[node_id].name in vg_dict.keys():
-                            vg_dict[vrm_pydata.bones_dict[node_id].name].append([i,weight])#2個目以降のｳｪｲﾄ
+                            vg_dict[vrm_pydata.bones_dict[node_id].name].append([v_index,weight])#2個目以降のｳｪｲﾄ
                         else:
-                            vg_dict[vrm_pydata.bones_dict[node_id].name] = [[i,weight]]#1個目のｳｪｲﾄ（初期化兼）
+                            vg_dict[vrm_pydata.bones_dict[node_id].name] = [[v_index,weight]]#1個目のｳｪｲﾄ（初期化兼）
                 #頂点ﾘｽﾄに辞書から書き込む
                 for vg in vg_list:
                     if not vg.name in vg_dict.keys():
-                        print("unused vertex group")
+                        #print("unused vertex group")
                         continue
                     weights = vg_dict[vg.name]
                     for w in weights:
                         if w[1] != 0.0:
+                            #頂点はまとめてﾘｽﾄで入れられるようにしかなってない
                             vg.add([w[0]], w[1], 'REPLACE')
         obj.modifiers.new("amt","ARMATURE").object = amt
 

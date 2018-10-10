@@ -6,19 +6,31 @@ import json
 
 
 def vrm_model_build(vrm_pydata):
-    #init
+    init()
+    textures = texture_load(vrm_pydata)
+    armature,bones = make_armature(vrm_pydata)
+    mat_dict = make_material(vrm_pydata,textures)
+    mesh_dict = make_mesh_objects(vrm_pydata,bones,armature,mat_dict)
+    json_dump(vrm_pydata)
+    cleaning_data(mesh_dict,armature)
+    return 0
+
+def init():    
     if bpy.context.active_object != None:
         bpy.ops.object.mode_set(mode='OBJECT')
         bpy.ops.object.select_all(action="DESELECT")
         
     #image_path_to Texture
+def texture_load(vrm_pydata):
     textures = []
     for image_props in vrm_pydata.image_propaties:
         img = bpy.data.images.load(image_props.filePath)
         tex = bpy.data.textures.new(image_props.name,"IMAGE")
         tex.image = img
         textures.append(tex)
+    return textures
         
+def make_armature(vrm_pydata):
     #build bones as armature
     bpy.ops.object.add(type='ARMATURE', enter_editmode=True, location=(0,0,0))
     amt = bpy.context.object
@@ -77,8 +89,9 @@ def vrm_model_build(vrm_pydata):
     #call when bone built    
     bpy.context.scene.update()
     bpy.ops.object.mode_set(mode='OBJECT')
+    return amt,bones
     
-        
+def make_material(vrm_pydata,textures):
     #Material_datas　適当なので要調整
     mat_dict = dict()
     for index,mat in enumerate(vrm_pydata.materials):
@@ -92,7 +105,9 @@ def vrm_model_build(vrm_pydata):
         ts.use_map_alpha = True
         ts.blend_type = 'MULTIPLY'
         mat_dict[index] = b_mat
-    
+    return mat_dict
+
+def make_mesh_objects(vrm_pydata,bones,armature,mat_dict):
     blend_mesh_object_dict = dict()
     #mesh_obj_build
     for pymesh in vrm_pydata.meshes:
@@ -145,7 +160,7 @@ def vrm_model_build(vrm_pydata):
                         if w[1] != 0.0:
                             #頂点はまとめてﾘｽﾄで入れられるようにしかなってない
                             vg.add([w[0]], w[1], 'REPLACE')
-        obj.modifiers.new("amt","ARMATURE").object = amt
+        obj.modifiers.new("amt","ARMATURE").object = armature
 
         #end of kuso
         scene = bpy.context.scene
@@ -191,11 +206,15 @@ def vrm_model_build(vrm_pydata):
                 shape_data = absolutaize_morph_Positions(pymesh.POSITION,morphPos)
                 for i,co in enumerate(shape_data):
                     keyblock.data[i].co = co
+    return blend_mesh_object_dict
+
+def json_dump(vrm_pydata):
     #mesh build end
     #json dump
     textblock = bpy.data.texts.new("{}.json".format(vrm_pydata.json["extensions"]["VRM"]["meta"]["title"]))
     textblock.write(json.dumps(vrm_pydata.json,indent = 4))
-    
+
+def cleaning_data(blend_mesh_object_dict,armature):
     #cleaning
     bpy.ops.object.mode_set(mode='OBJECT')
     bpy.ops.object.select_all(action="DESELECT")
@@ -223,11 +242,11 @@ def vrm_model_build(vrm_pydata):
         joined_objects.append(bpy.context.active_object)
 
     #axis armature->>boneの順でやらないと不具合
-    bpy.context.scene.objects.active = amt
-    amt.select = True
-    amt.rotation_mode = "XYZ"
-    amt.rotation_euler[0] = numpy.deg2rad(90)
-    amt.rotation_euler[2] = numpy.deg2rad(-90)
+    bpy.context.scene.objects.active = armature
+    armature.select = True
+    armature.rotation_mode = "XYZ"
+    armature.rotation_euler[0] = numpy.deg2rad(90)
+    armature.rotation_euler[2] = numpy.deg2rad(-90)
     bpy.ops.object.transform_apply(rotation=True)
     bpy.ops.object.mode_set(mode='OBJECT')
     bpy.ops.object.select_all(action="DESELECT")

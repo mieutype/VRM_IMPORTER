@@ -12,7 +12,8 @@ def vrm_model_build(vrm_pydata):
     mat_dict = make_material(vrm_pydata,textures)
     mesh_dict = make_mesh_objects(vrm_pydata,bones,armature,mat_dict)
     json_dump(vrm_pydata)
-    cleaning_data(mesh_dict,armature)
+    mesh_objects = cleaning_data(mesh_dict)
+    axis_transform(armature,mesh_objects)
     return 0
 
 def init():    
@@ -214,7 +215,7 @@ def json_dump(vrm_pydata):
     textblock = bpy.data.texts.new("{}.json".format(vrm_pydata.json["extensions"]["VRM"]["meta"]["title"]))
     textblock.write(json.dumps(vrm_pydata.json,indent = 4))
 
-def cleaning_data(blend_mesh_object_dict,armature):
+def cleaning_data(blend_mesh_object_dict):
     #cleaning
     bpy.ops.object.mode_set(mode='OBJECT')
     bpy.ops.object.select_all(action="DESELECT")
@@ -240,7 +241,9 @@ def cleaning_data(blend_mesh_object_dict,armature):
         bpy.ops.object.join()
         bpy.ops.object.select_all(action="DESELECT")
         joined_objects.append(bpy.context.active_object)
+    return joined_objects
 
+def axis_transform(armature,mesh_objects):
     #axis armature->>boneの順でやらないと不具合
     bpy.context.scene.objects.active = armature
     armature.select = True
@@ -250,7 +253,7 @@ def cleaning_data(blend_mesh_object_dict,armature):
     bpy.ops.object.transform_apply(rotation=True)
     bpy.ops.object.mode_set(mode='OBJECT')
     bpy.ops.object.select_all(action="DESELECT")
-    for obj in  joined_objects:
+    for obj in mesh_objects:
         bpy.context.scene.objects.active = obj
         obj.select = True
         if obj.parent_type == 'BONE':#ボーンにくっ付いて動くのは無視:なんか吹っ飛ぶ髪の毛がいる?

@@ -121,14 +121,15 @@ def make_mesh_objects(vrm_pydata,bones,armature,mat_dict):
         else: 
             blend_mesh_object_dict[pymesh.object_id].append(obj)
         #kuso of kuso kakugosiro
+        #origin 0:ﾎﾞｰﾝ 1:mesh 2:skin
         origin = None
         for key,node in vrm_pydata.origine_bones_dict.items():
             if node[1] == pymesh.object_id:
-                obj.location = node[0].position
+                obj.location = node[0].position #origin boneの場所に移動
                 if len(node) == 3:
                     origin = node
                 else:#len=2,skinがない場合
-                    obj.parent = amt
+                    obj.parent = armature
                     obj.parent_type = "BONE"
                     obj.parent_bone = node[0].name
                     #boneのtail側にparentされるので、根元に動かす
@@ -210,8 +211,6 @@ def make_mesh_objects(vrm_pydata,bones,armature,mat_dict):
     return blend_mesh_object_dict
 
 def json_dump(vrm_pydata):
-    #mesh build end
-    #json dump
     textblock = bpy.data.texts.new("{}.json".format(vrm_pydata.json["extensions"]["VRM"]["meta"]["title"]))
     textblock.write(json.dumps(vrm_pydata.json,indent = 4))
 
@@ -244,7 +243,7 @@ def cleaning_data(blend_mesh_object_dict):
     return joined_objects
 
 def axis_transform(armature,mesh_objects):
-    #axis armature->>boneの順でやらないと不具合
+    #axis armature->>objの順でやらないと不具合
     bpy.context.scene.objects.active = armature
     armature.select = True
     armature.rotation_mode = "XYZ"

@@ -1,3 +1,11 @@
+"""
+Copyright (c) 2018 iCyP
+Released under the MIT license
+https://opensource.org/licenses/mit-license.php
+
+"""
+
+
 import bpy, bmesh
 from . import V_Types as VRM_Types
 from math import sqrt,pow

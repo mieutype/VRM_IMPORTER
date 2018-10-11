@@ -1,3 +1,10 @@
+"""
+Copyright (c) 2018 iCyP
+Released under the MIT license
+https://opensource.org/licenses/mit-license.php
+
+"""
+
 from . import V_Types as VRM_Types
 
 def material(mat,materialPropaties)->VRM_Types.Material:

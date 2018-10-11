@@ -15,6 +15,7 @@
 -  vrm_load.py ： vrmファイルからpythonのデータにする。<br>
 -  model_build.py pythonデータをblenderに書き込む。砂上の楼閣レベルの品、特にblenderに書き込む側<br>
 -  binaly_loader： 名前の通り。上の補助。<br>
+-  pydata_factory.py:  同上<br>
 -  V_Types.py： 文字通りの構造体が複数<br>
 -  gl_const.py：定数集<br>
 ## 上記をフォルダにまとめてaddonsフォルダに突っ込んで有効化(TESTINGの中にいる)したら左上FileからImport->VRM!

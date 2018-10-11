@@ -7,14 +7,14 @@ https://opensource.org/licenses/mit-license.php
 class VRM_pydata(object):
     def __init__(
             self,
-            filepath = None,json = None,binaryReader = None,
+            filepath = None,json = None,decoded_binary = None,
             image_propaties = None,meshes =None,materials = None,
             bones_dict = None,origine_bones_dict = None, skins_joints_list = None
             ):
         self.filepath = filepath
         self.json = json
-        self.binaryReader = binaryReader
-        
+        self.decoded_binary = decoded_binary
+
         self.image_propaties = image_propaties if image_propaties is not None else []
         self.meshes = meshes if meshes is not None else []
         self.materials = materials if materials is not None else []

@@ -65,8 +65,7 @@ def read_vrm(model_path):
     #datachunkは普通一つしかない
     with open(model_path, 'rb') as f:
         vrm_pydata.json, body_binary = parse_glb(f.read())
-    vrm_pydata.binaryReader = Binaly_Reader(body_binary)
-    
+     
     #改変不可ﾗｲｾﾝｽを撥ねる
     if re.match("CC(.*)ND(.*)", vrm_pydata.json["extensions"]["VRM"]["meta"]["licenseName"]) is not None:
         raise Exception("This VRM is not allowed to Edit. CHECK ITS LICENSE　改変不可Licenseです。")
@@ -74,18 +73,20 @@ def read_vrm(model_path):
     if vrm_pydata.json["extensions"]["VRM"]["meta"]["licenseName"] == "Other":
         print("Is this VRM allowed to Edit? CHECK IT LICENSE")
     
-    texture_rip(vrm_pydata)
+    
+    texture_rip(vrm_pydata,body_binary)
+    vrm_pydata.decoded_binary = decode_bin(vrm_pydata.json,body_binary)
+
     mesh_read(vrm_pydata)
     material_read(vrm_pydata)
     node_read(vrm_pydata)
     skin_read(vrm_pydata)
 
     return vrm_pydata
-    
 
-def texture_rip(vrm_pydata):
+def texture_rip(vrm_pydata,body_binary):
     bufferViews = vrm_pydata.json["bufferViews"]
-    accessors = vrm_pydata.json["accessors"]
+    binary_reader = Binaly_Reader(body_binary)
     #ここ画像切り出し #blenderはバイト列から画像を読み込む術がないので、画像ファイルを書き出して、それを読み込むしかない。
     vrm_dir_path = os.path.dirname(os.path.abspath(vrm_pydata.filepath))
     for id,image_prop in enumerate(vrm_pydata.json["images"]):
@@ -93,8 +94,8 @@ def texture_rip(vrm_pydata):
             image_name = image_prop["extra"]["name"]
         else :
             image_name = image_prop["name"]
-        vrm_pydata.binaryReader.set_pos(bufferViews[image_prop["bufferView"]]["byteOffset"])
-        image_binary = vrm_pydata.binaryReader.read_binaly(bufferViews[image_prop["bufferView"]]["byteLength"])
+        binary_reader.set_pos(bufferViews[image_prop["bufferView"]]["byteOffset"])
+        image_binary = binary_reader.read_binaly(bufferViews[image_prop["bufferView"]]["byteLength"])
         image_type = image_prop["mimeType"].split("/")[-1]
         if image_name == "":
             image_name = "texture_" + str(id)
@@ -107,6 +108,29 @@ def texture_rip(vrm_pydata):
             print(image_name + " Image is already exists. NOT OVER WRITTEN")
         image_propaty = VRM_Types.Image_props(image_name,image_path,image_type)
         vrm_pydata.image_propaties.append(image_propaty)
+
+def decode_bin(json_data,binary):
+    br = Binaly_Reader(binary)
+    #This list indexed by accesser index
+    decoded_binary = []
+    bufferViews = json_data["bufferViews"]
+    accessors = json_data["accessors"]
+    type_num_dict = {"SCALAR":1,"VEC2":2,"VEC3":3,"VEC4":4,"MAT4":16}
+    for accessor in accessors:
+        type_num = type_num_dict[accessor["type"]]
+        br.set_pos(bufferViews[accessor["bufferView"]]["byteOffset"])
+        data_list = []
+        for num in range(accessor["count"]):          
+            if type_num == 1:
+                data = br.read_as_dataType(accessor["componentType"])
+            else:
+                data = []
+                for l in range(type_num):
+                    data.append(br.read_as_dataType(accessor["componentType"]))
+            data_list.append(data)
+        decoded_binary.append(data_list)
+        
+    return decoded_binary
 
 def mesh_read(vrm_pydata):
     bufferViews = vrm_pydata.json["bufferViews"]
@@ -121,32 +145,17 @@ def mesh_read(vrm_pydata):
                 #TODO その他ﾒｯｼｭﾀｲﾌﾟ対応
                 raise Exception("unSupported polygon type(:{}) Exception".format(primitive["mode"]))
                 
-            #まず、頂点indexを読む
-            accessor = accessors[primitive["indices"]]
-            vrm_pydata.binaryReader.set_pos(bufferViews[accessor["bufferView"]]["byteOffset"])
-            for v in range(accessor["count"]):
-                vrm_mesh.face_indices.append(vrm_pydata.binaryReader.read_as_dataType(accessor["componentType"]))
+            #頂点index
+            vrm_mesh.face_indices = vrm_pydata.decoded_binary[primitive["indices"]]
             #3要素ずつに変換しておく(GCL.TRIANGLES前提なので)
             #ＡＴＴＥＮＴＩＯＮ　これだけndarray
             vrm_mesh.face_indices = numpy.reshape(vrm_mesh.face_indices, (-1, 3))
             
             #ここから頂点属性
-            def verts_attr_fuctory(accessor):  #data_lenghtは2以上(常にﾘｽﾄを返す)を想定
-                type_num_dict = {"SCALAR":1,"VEC2":2,"VEC3":3,"VEC4":4,"MAT4":16}
-                type_num = type_num_dict[accessor["type"]]
-                vrm_pydata.binaryReader.set_pos(bufferViews[accessor["bufferView"]]["byteOffset"])
-                data_list = []
-                for num in range(accessor["count"]):
-                    data = []
-                    for l in range(type_num):
-                        data.append(vrm_pydata.binaryReader.read_as_dataType(accessor["componentType"]))
-                    data_list.append(data)
-                return data_list
             vertex_attributes = primitive["attributes"]
             #頂点属性は実装によっては存在しない属性（例えばJOINTSやWEIGHTSがなかったりもする）もあるし、UVや頂点カラー0->Nで増やせる（ｽｷﾆﾝｸﾞは1要素(ﾎﾞｰﾝ4本)限定
             for attr in vertex_attributes.keys():
-                accessor = accessors[vertex_attributes[attr]]
-                vrm_mesh.__setattr__(attr,verts_attr_fuctory(accessor))
+                vrm_mesh.__setattr__(attr,vrm_pydata.decoded_binary[vertex_attributes[attr]])
             #region TEXCOORD_FIX [ 古いuniVRM誤り: uv.y = -uv.y ->修復 uv.y = 1 - ( -uv.y ) => uv.y=1+uv.y]
             #uvは0-1にある前提で、マイナスであれば変換ミスとみなす
             uv_count = 0
@@ -160,18 +169,16 @@ def mesh_read(vrm_pydata):
                     uv_count +=1
                 else:
                     break
-
             #blenderとは上下反対のuv,それはblenderに書き込むときに直す
             #endregion TEXCOORD_FIX
 
-            #マテリアルの場所を記録
+            #meshに当てられるマテリアルの場所を記録
             vrm_mesh.material_index = primitive["material"]
             #ここからモーフターゲット vrmのtargetは相対位置 normalは無視する
             if "targets" in primitive:
                 morphTargetDict = dict()
                 for i,morphTarget in enumerate(primitive["targets"]):
-                    accessor = accessors[morphTarget["POSITION"]]
-                    posArray = verts_attr_fuctory(accessor)
+                    posArray = vrm_pydata.decoded_binary[morphTarget["POSITION"]]
                     if "extra" in morphTarget:#for old AliciaSolid
                         morphTargetDict[primitive["targets"][i]["extra"]["name"]] = posArray
                     else:

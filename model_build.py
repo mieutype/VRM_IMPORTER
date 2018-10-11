@@ -108,8 +108,9 @@ def make_material(vrm_pydata,textures):
         mat_dict[index] = b_mat
     return mat_dict
 
-def make_mesh_objects(vrm_pydata,bones,armature,mat_dict):
+def make_mesh_objects(vrm_pydata,b_bones,b_armature,b_mat_dict):
     blend_mesh_object_dict = dict()
+    morph_cache_dict = {} #key:(POSITION,targets.POSITION),value:point_data
     #mesh_obj_build
     for pymesh in vrm_pydata.meshes:
         b_mesh = bpy.data.meshes.new(pymesh.name)
@@ -129,11 +130,11 @@ def make_mesh_objects(vrm_pydata,bones,armature,mat_dict):
                 if len(node) == 3:
                     origin = node
                 else:#len=2,skinがない場合
-                    obj.parent = armature
+                    obj.parent = b_armature
                     obj.parent_type = "BONE"
                     obj.parent_bone = node[0].name
                     #boneのtail側にparentされるので、根元に動かす
-                    obj.location = numpy.array(bones[key].head) - numpy.array(bones[key].tail)
+                    obj.location = numpy.array(b_bones[key].head) - numpy.array(b_bones[key].tail)
         
         # vertex groupの作成
         if origin != None:
@@ -160,9 +161,9 @@ def make_mesh_objects(vrm_pydata,bones,armature,mat_dict):
                     weights = vg_dict[vg.name]
                     for w in weights:
                         if w[1] != 0.0:
-                            #頂点はまとめてﾘｽﾄで入れられるようにしかなってない
+                            #頂点はまとめてﾘｽﾄで追加できるようにしかなってない
                             vg.add([w[0]], w[1], 'REPLACE')
-        obj.modifiers.new("amt","ARMATURE").object = armature
+        obj.modifiers.new("amt","ARMATURE").object = b_armature
 
         #end of kuso
         scene = bpy.context.scene
@@ -186,11 +187,18 @@ def make_mesh_objects(vrm_pydata,bones,armature,mat_dict):
                 break
 
         #material
-        obj.data.materials.append(mat_dict[pymesh.material_index])
+        obj.data.materials.append(b_mat_dict[pymesh.material_index])
 
 
-        def absolutaize_morph_Positions(basePoints,morphTargetpos):
+        def absolutaize_morph_Positions(basePoints,morphTargetpos_and_index):
             shape_key_Positions = []
+            morphTargetpos = morphTargetpos_and_index[0]
+            morphTargetindex = morphTargetpos_and_index[1]
+
+            #すでに変換したことがあるならそれを使う
+            if (pymesh.POSITION_accessor,morphTargetindex) in morph_cache_dict.keys():
+                return morph_cache_dict[(pymesh.POSITION_accessor,morphTargetindex)]
+
             for basePos,morphPos in zip(basePoints,morphTargetpos):
                 #numpy.array毎回作るのは見た目きれいだけど8倍くらい遅い
                 shape_key_Positions.append([
@@ -198,14 +206,16 @@ def make_mesh_objects(vrm_pydata,bones,armature,mat_dict):
                     basePos[1] + morphPos[1],
                     basePos[2] + morphPos[2]
                 ])
+            morph_cache_dict[(pymesh.POSITION_accessor,morphTargetindex)] = shape_key_Positions
             return shape_key_Positions
+            
         #shapeKeys
-        if hasattr(pymesh,"morphTargetDict"):
+        if hasattr(pymesh,"morphTarget_dict_and_accessor_index"):
             obj.shape_key_add("Basis")
-            for morphName,morphPos in pymesh.morphTargetDict.items():
+            for morphName,morphPos_and_index in pymesh.morphTarget_dict_and_accessor_index.items():
                 obj.shape_key_add(morphName)
                 keyblock = b_mesh.shape_keys.key_blocks[morphName]
-                shape_data = absolutaize_morph_Positions(pymesh.POSITION,morphPos)
+                shape_data = absolutaize_morph_Positions(pymesh.POSITION,morphPos_and_index)
                 for i,co in enumerate(shape_data):
                     keyblock.data[i].co = co
     return blend_mesh_object_dict

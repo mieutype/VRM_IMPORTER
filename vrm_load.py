@@ -75,7 +75,7 @@ def read_vrm(model_path):
     
     
     texture_rip(vrm_pydata,body_binary)
-    
+
     vrm_pydata.decoded_binary = decode_bin(vrm_pydata.json,body_binary)
 
     mesh_read(vrm_pydata)
@@ -135,24 +135,23 @@ def decode_bin(json_data,binary):
     return decoded_binary
 
 def mesh_read(vrm_pydata):
-    bufferViews = vrm_pydata.json["bufferViews"]
-    accessors = vrm_pydata.json["accessors"]
     #メッシュをパースする
     for n,mesh in enumerate(vrm_pydata.json["meshes"]):
         for j,primitive in enumerate(mesh["primitives"]):  
             vrm_mesh = VRM_Types.Mesh()
             vrm_mesh.object_id = n
             vrm_mesh.name = mesh["name"]+str(j)
+
+            #region 頂点index
             if primitive["mode"] != GLC.TRIANGLES:
                 #TODO その他ﾒｯｼｭﾀｲﾌﾟ対応
                 raise Exception("unSupported polygon type(:{}) Exception".format(primitive["mode"]))
-                
-            #頂点index
             vrm_mesh.face_indices = vrm_pydata.decoded_binary[primitive["indices"]]
             #3要素ずつに変換しておく(GCL.TRIANGLES前提なので)
             #ＡＴＴＥＮＴＩＯＮ　これだけndarray
             vrm_mesh.face_indices = numpy.reshape(vrm_mesh.face_indices, (-1, 3))
-            
+            #endregion 頂点index
+
             #ここから頂点属性
             vertex_attributes = primitive["attributes"]
             #頂点属性は実装によっては存在しない属性（例えばJOINTSやWEIGHTSがなかったりもする）もあるし、UVや頂点カラー0->Nで増やせる（ｽｷﾆﾝｸﾞは1要素(ﾎﾞｰﾝ4本)限定
@@ -176,16 +175,22 @@ def mesh_read(vrm_pydata):
 
             #meshに当てられるマテリアルの場所を記録
             vrm_mesh.material_index = primitive["material"]
+
+            #変換時のキャッシュ対応のためのデータ
+            vrm_mesh.POSITION_accessor = primitive["attributes"]["POSITION"]
+            
             #ここからモーフターゲット vrmのtargetは相対位置 normalは無視する
             if "targets" in primitive:
-                morphTargetDict = dict()
+                morphTarget_dict_and_accessor_index = dict()
                 for i,morphTarget in enumerate(primitive["targets"]):
                     posArray = vrm_pydata.decoded_binary[morphTarget["POSITION"]]
                     if "extra" in morphTarget:#for old AliciaSolid
-                        morphTargetDict[primitive["targets"][i]["extra"]["name"]] = posArray
+                        #accesserのindexを持つのは変換時のキャッシュ対応のため
+                        morphTarget_dict_and_accessor_index[primitive["targets"][i]["extra"]["name"]] = [posArray,primitive["targets"][i]["POSITION"]]
                     else:
-                        morphTargetDict[primitive["extras"]["targetNames"][i]] = posArray
-                vrm_mesh.__setattr__("morphTargetDict",morphTargetDict)
+                        #同上
+                        morphTarget_dict_and_accessor_index[primitive["extras"]["targetNames"][i]] = [posArray,primitive["targets"][i]["POSITION"]]
+                vrm_mesh.__setattr__("morphTarget_dict_and_accessor_index",morphTarget_dict_and_accessor_index)
 
             vrm_pydata.meshes.append(vrm_mesh)
 

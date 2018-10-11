@@ -75,6 +75,7 @@ def read_vrm(model_path):
     
     
     texture_rip(vrm_pydata,body_binary)
+    
     vrm_pydata.decoded_binary = decode_bin(vrm_pydata.json,body_binary)
 
     mesh_read(vrm_pydata)
@@ -109,6 +110,7 @@ def texture_rip(vrm_pydata,body_binary):
         image_propaty = VRM_Types.Image_props(image_name,image_path,image_type)
         vrm_pydata.image_propaties.append(image_propaty)
 
+#　”accessorの順に”　データを読み込んでリストにしたものを返す
 def decode_bin(json_data,binary):
     br = Binaly_Reader(binary)
     #This list indexed by accesser index

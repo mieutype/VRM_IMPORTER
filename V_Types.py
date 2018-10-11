@@ -14,6 +14,7 @@ class VRM_pydata(object):
         self.filepath = filepath
         self.json = json
         self.binaryReader = binaryReader
+        
         self.image_propaties = image_propaties if image_propaties is not None else []
         self.meshes = meshes if meshes is not None else []
         self.materials = materials if materials is not None else []
@@ -57,9 +58,9 @@ class Material(object):
         self.color_texture_index = None
         self.color_texcoord_index = None
         self.normal_texture_index = None
-        self.normal_texcoord = None
+        self.normal_texcoord_index = None
         self.displace_texture_index = None
-        self.displace_texcoord = None
+        self.displace_texcoord_index = None
         self.doubleSided = True
 
 if "__main__" == __name__:

@@ -62,7 +62,7 @@ def parse_glb(data: bytes):
 #あくまでvrm(の特にバイナリ)をpythonデータ化するだけで、blender型に変形はここではしない
 def read_vrm(model_path):
     vrm_pydata = VRM_Types.VRM_pydata(filepath=model_path)
-    #datachunkは一つしかない
+    #datachunkは普通一つしかない
     with open(model_path, 'rb') as f:
         vrm_pydata.json, body_binary = parse_glb(f.read())
     vrm_pydata.binaryReader = Binaly_Reader(body_binary)
@@ -147,7 +147,7 @@ def mesh_read(vrm_pydata):
             for attr in vertex_attributes.keys():
                 accessor = accessors[vertex_attributes[attr]]
                 vrm_mesh.__setattr__(attr,verts_attr_fuctory(accessor))
-            #TEXCOORD_FIX [ 古いuniVRM誤り: uv.y = -uv.y ->修復 uv.y = 1 - ( -uv.y ) => uv.y=1+uv.y]
+            #region TEXCOORD_FIX [ 古いuniVRM誤り: uv.y = -uv.y ->修復 uv.y = 1 - ( -uv.y ) => uv.y=1+uv.y]
             #uvは0-1にある前提で、マイナスであれば変換ミスとみなす
             uv_count = 0
             while True:
@@ -162,6 +162,7 @@ def mesh_read(vrm_pydata):
                     break
 
             #blenderとは上下反対のuv,それはblenderに書き込むときに直す
+            #endregion TEXCOORD_FIX
 
             #マテリアルの場所を記録
             vrm_mesh.material_index = primitive["material"]

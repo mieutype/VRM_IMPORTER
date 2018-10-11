@@ -28,6 +28,7 @@ class Binaly_Reader:
         return result
 
     def read_uint(self):
+        #unpackは内容の個数に関わらずタプルで返すので[0]が必要
         result = struct.unpack('<I', self.data[self.pos:self.pos + 4])[0]
         self.pos += 4
         return result

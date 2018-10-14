@@ -194,10 +194,23 @@ def make_mesh_objects(vrm_pydata,b_bones,b_armature,b_mat_dict):
             else:
                 break
 
-        #material
+        #material適用
         obj.data.materials.append(b_mat_dict[pymesh.material_index])
+        
+        #vertex_color　なぜかこれだけ面基準で、loose verts and edgesに色は塗れない
+        #FIXME テスト (懸案：cleaningで頂点結合でデータ物故割れる説)
+        vcolor_count = 0
+        while True:
+            vc_color_name = "COLOR_{}".format(vcolor_count)
+            if hasattr(pymesh,vc_color_name):
+                vc = b_mesh.vertex_colors.new(name = vc_color_name)
+                for v_index,col in enumerate(vc):
+                    vc.data[v_index].color = getattr(pymesh,vc_color_name)[flatten_vrm_mesh_vert_index(v_index)]
+                vcolor_count += 1
+            else:
+                break
 
-
+        #shapekey
         def absolutaize_morph_Positions(basePoints,morphTargetpos_and_index):
             shape_key_Positions = []
             morphTargetpos = morphTargetpos_and_index[0]
@@ -218,9 +231,9 @@ def make_mesh_objects(vrm_pydata,b_bones,b_armature,b_mat_dict):
             return shape_key_Positions
             
         #shapeKeys
-        if hasattr(pymesh,"morphTarget_dict_and_accessor_index"):
+        if hasattr(pymesh,"morphTarget_point_list_and_accessor_index_dict"):
             obj.shape_key_add("Basis")
-            for morphName,morphPos_and_index in pymesh.morphTarget_dict_and_accessor_index.items():
+            for morphName,morphPos_and_index in pymesh.morphTarget_point_list_and_accessor_index_dict.items():
                 obj.shape_key_add(morphName)
                 keyblock = b_mesh.shape_keys.key_blocks[morphName]
                 shape_data = absolutaize_morph_Positions(pymesh.POSITION,morphPos_and_index)

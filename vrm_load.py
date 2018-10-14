@@ -66,6 +66,10 @@ def read_vrm(model_path):
     with open(model_path, 'rb') as f:
         vrm_pydata.json, body_binary = parse_glb(f.read())
      
+    #KHR_DRACO_MESH_COMPRESSION は対応してない場合落とさないといけないらしい。どのみち壊れたデータになるからね。
+    if "extensionsRequired" in vrm_pydata.json:
+        if "KHR_DRACO_MESH_COMPRESSION" in vrm_pydata.json["extensionsRequired"]:
+            raise Exception("This VRM has DRACO COMPRESSION. This importer can't read this VRM. Draco圧縮されたVRMは未対応です")
     #改変不可ﾗｲｾﾝｽを撥ねる
     if re.match("CC(.*)ND(.*)", vrm_pydata.json["extensions"]["VRM"]["meta"]["licenseName"]) is not None:
         raise Exception("This VRM is not allowed to Edit. CHECK ITS LICENSE　改変不可Licenseです。")
@@ -181,16 +185,16 @@ def mesh_read(vrm_pydata):
             
             #ここからモーフターゲット vrmのtargetは相対位置 normalは無視する
             if "targets" in primitive:
-                morphTarget_dict_and_accessor_index = dict()
+                morphTarget_point_list_and_accessor_index_dict = dict()
                 for i,morphTarget in enumerate(primitive["targets"]):
                     posArray = vrm_pydata.decoded_binary[morphTarget["POSITION"]]
                     if "extra" in morphTarget:#for old AliciaSolid
                         #accesserのindexを持つのは変換時のキャッシュ対応のため
-                        morphTarget_dict_and_accessor_index[primitive["targets"][i]["extra"]["name"]] = [posArray,primitive["targets"][i]["POSITION"]]
+                        morphTarget_point_list_and_accessor_index_dict[primitive["targets"][i]["extra"]["name"]] = [posArray,primitive["targets"][i]["POSITION"]]
                     else:
                         #同上
-                        morphTarget_dict_and_accessor_index[primitive["extras"]["targetNames"][i]] = [posArray,primitive["targets"][i]["POSITION"]]
-                vrm_mesh.__setattr__("morphTarget_dict_and_accessor_index",morphTarget_dict_and_accessor_index)
+                        morphTarget_point_list_and_accessor_index_dict[primitive["extras"]["targetNames"][i]] = [posArray,primitive["targets"][i]["POSITION"]]
+                vrm_mesh.__setattr__("morphTarget_point_list_and_accessor_index_dict",morphTarget_point_list_and_accessor_index_dict)
 
             vrm_pydata.meshes.append(vrm_mesh)
 

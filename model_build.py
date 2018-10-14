@@ -14,20 +14,33 @@ import json
 
 
 def vrm_model_build(vrm_pydata):
-    init()
+    affected_object = init()
     textures = texture_load(vrm_pydata)
     armature,bones = make_armature(vrm_pydata)
     mat_dict = make_material(vrm_pydata,textures)
     mesh_dict = make_mesh_objects(vrm_pydata,bones,armature,mat_dict)
     json_dump(vrm_pydata)
     mesh_objects = cleaning_data(mesh_dict)
-    axis_transform(armature,mesh_objects)
+    axis_transform(armature, mesh_objects)
+    finishing(affected_object)
     return 0
 
-def init():    
+def init():
+    # active_objectがhideだとbpy.ops.object.mode_set.poll()に失敗してエラーが出るのでその回避と、それを元に戻す
+    affected_object = None
     if bpy.context.active_object != None:
+        if hasattr(bpy.context.active_object, "hide"):
+            if bpy.context.active_object.hide:
+                bpy.context.active_object.hide = False
+                affected_object = bpy.context.active_object
         bpy.ops.object.mode_set(mode='OBJECT')
         bpy.ops.object.select_all(action="DESELECT")
+    return affected_object
+
+def finishing(affected_object):
+    #initで弄ったやつを戻す
+    if affected_object is not None:
+        affected_object.hide = True
         
     #image_path_to Texture
 def texture_load(vrm_pydata):

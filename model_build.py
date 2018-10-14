@@ -26,6 +26,7 @@ def vrm_model_build(vrm_pydata):
     return 0
 
 def init():
+    # active_objectがhideだとbpy.ops.object.mode_set.poll()に失敗してエラーが出るのでその回避と、それを元に戻す
     affected_object = None
     if bpy.context.active_object != None:
         if hasattr(bpy.context.active_object, "hide"):
@@ -37,6 +38,7 @@ def init():
     return affected_object
 
 def finishing(affected_object):
+    #initで弄ったやつを戻す
     affected_object.hide = True
         
     #image_path_to Texture

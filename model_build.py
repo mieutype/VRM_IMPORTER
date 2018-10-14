@@ -39,7 +39,8 @@ def init():
 
 def finishing(affected_object):
     #initで弄ったやつを戻す
-    affected_object.hide = True
+    if affected_object is not None:
+        affected_object.hide = True
         
     #image_path_to Texture
 def texture_load(vrm_pydata):

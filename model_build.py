@@ -266,7 +266,7 @@ def axis_transform(armature,mesh_objects):
     armature.select = True
     armature.rotation_mode = "XYZ"
     armature.rotation_euler[0] = numpy.deg2rad(90)
-    armature.rotation_euler[2] = numpy.deg2rad(-90)
+    armature.rotation_euler[2] = numpy.deg2rad(-180)
     bpy.ops.object.transform_apply(rotation=True)
     bpy.ops.object.mode_set(mode='OBJECT')
     bpy.ops.object.select_all(action="DESELECT")
@@ -279,6 +279,6 @@ def axis_transform(armature,mesh_objects):
             continue
         obj.rotation_mode = "XYZ"
         obj.rotation_euler[0] = numpy.deg2rad(90)
-        obj.rotation_euler[2] = numpy.deg2rad(-90)
+        obj.rotation_euler[2] = numpy.deg2rad(-180)
         bpy.ops.object.transform_apply(rotation=True)
         obj.select = False

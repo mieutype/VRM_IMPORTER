@@ -122,17 +122,57 @@ def make_material(vrm_pydata,textures):
         b_mat.diffuse_color = mat.base_color[0:3]
         b_mat.use_transparency = True
         b_mat.alpha = 1
-        if mat.color_texture_index is not None:
+        def texture_add(tex_index,texture_param_dict,slot_param_dict):
             ts = b_mat.texture_slots.add()
-            ts.texture = textures[mat.color_texture_index]
-            ts.use_map_alpha = True
-            ts.blend_type = 'MULTIPLY'
+            ts.texture = tex_index
+            for attr,param in texture_param_dict.items():
+                setattr(ts.texture,attr,param)
+            for attr,param in slot_param_dict.items():
+                setattr(ts,attr,param)
+        if mat.color_texture_index is not None:
+            texture_param_dict = {}
+            slot_param_dict = {
+                "texture_coords":"UV",
+                "uv_layer":"TEXCOORD_{}".format(mat.color_texcoord_index),
+                "use_map_alpha":True,
+                "blend_type":"MULTIPLY"
+                }
+            texture_add(textures[mat.color_texture_index],texture_param_dict,slot_param_dict)
+        if mat.normal_texture_index is not None:
+            texture_param_dict = {
+                "use_normal_map":True,
+            }
+            slot_param_dict = {
+                "texture_coords":"UV",
+                "uv_layer":"TEXCOORD_{}".format(mat.normal_texcoord_index),
+                "blend_type":"MIX",
+                "use_map_color_diffuse":False,
+                "use_map_normal":True
+                }
+            texture_add(textures[mat.normal_texture_index],texture_param_dict,slot_param_dict)
+        if hasattr(mat,"sphere_texture_index"):
+            texture_param_dict = {}
+            slot_param_dict = {
+                "texture_coords":"NORMAL",
+                "blend_type":"ADD"
+                }
+            texture_add(textures[mat.sphere_texture_index],texture_param_dict,slot_param_dict)
+        if hasattr(mat,"emission_texture_index"):
+            texture_param_dict = {}
+            slot_param_dict = {
+                "texture_coords":"UV",
+                "uv_layer":"TEXCOORD_{}".format(mat.color_texcoord_index),
+                "use_map_color_diffuse":False,
+                "use_map_emit":True,
+                "blend_type":"ADD"
+                }
+            texture_add(textures[mat.emission_texture_index],texture_param_dict,slot_param_dict)
         mat_dict[index] = b_mat
     return mat_dict
 
 def make_mesh_objects(vrm_pydata,b_bones,b_armature,b_mat_dict):
     blend_mesh_object_dict = dict()
-    morph_cache_dict = {} #key:(POSITION,targets.POSITION),value:point_data
+    morph_cache_dict = {} #key:tuple(POSITION,targets.POSITION),value:points_data
     #mesh_obj_build
     for pymesh in vrm_pydata.meshes:
         b_mesh = bpy.data.meshes.new(pymesh.name)

@@ -54,6 +54,7 @@ class Image_props(object):
 class Material(object):
     def __init__(self):
         self.name = ""
+        self.shader_name = ""
         self.base_color = (1,1,1,1)
         self.color_texture_index = None
         self.color_texcoord_index = None

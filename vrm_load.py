@@ -205,12 +205,15 @@ def mesh_read(vrm_pydata):
     #ここからマテリアル
 def material_read(vrm_pydata):
     VRM_EXTENSION_material_promaties = None
+    textures = None
     try:
         VRM_EXTENSION_material_promaties = vrm_pydata.json["extensions"]["VRM"]["materialProperties"]
     except Exception as e:
         print(e)
+    if "textures" in vrm_pydata.json:
+        textures = vrm_pydata.json["textures"]
     for mat in vrm_pydata.json["materials"]:
-        vrm_pydata.materials.append(pydata_factory.material(mat,VRM_EXTENSION_material_promaties))
+        vrm_pydata.materials.append(pydata_factory.material(mat,VRM_EXTENSION_material_promaties,textures))
 
 
     #node(ボーン)をﾊﾟｰｽする->親からの相対位置で記録されている

@@ -157,6 +157,7 @@ def make_material(vrm_pydata,textures):
                 "blend_type":"ADD"
                 }
             texture_add(textures[mat.sphere_texture_index],texture_param_dict,slot_param_dict)
+        #FIXME blenderのemissionは光量のmap、Mtoonのemissionは光色
         if hasattr(mat,"emission_texture_index"):
             texture_param_dict = {}
             slot_param_dict = {

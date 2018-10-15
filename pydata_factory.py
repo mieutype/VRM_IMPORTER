@@ -21,8 +21,9 @@ def material(mat,materialPropaties)->VRM_Types.Material:
 
     if "pbrMetallicRoughness" in mat:
         pbrmat = mat["pbrMetallicRoughness"]
-        v_mat.color_texture_index = pbrmat["baseColorTexture"]["index"]
-        v_mat.color_texcoord_index= pbrmat["baseColorTexture"]["texCoord"]
+        if "baseColorTexture" in pbrmat:
+            v_mat.color_texture_index = pbrmat["baseColorTexture"]["index"]
+            v_mat.color_texcoord_index= pbrmat["baseColorTexture"]["texCoord"]
         if "baseColorFactor" in pbrmat:
             v_mat.base_color = pbrmat["baseColorFactor"]
         if "metallicFactor" in pbrmat:

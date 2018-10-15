@@ -71,11 +71,12 @@ def read_vrm(model_path):
         if "KHR_DRACO_MESH_COMPRESSION" in vrm_pydata.json["extensionsRequired"]:
             raise Exception("This VRM has DRACO COMPRESSION. This importer can't read this VRM. Draco圧縮されたVRMは未対応です")
     #改変不可ﾗｲｾﾝｽを撥ねる
-    if re.match("CC(.*)ND(.*)", vrm_pydata.json["extensions"]["VRM"]["meta"]["licenseName"]) is not None:
-        raise Exception("This VRM is not allowed to Edit. CHECK ITS LICENSE　改変不可Licenseです。")
+    if "licenseName" in vrm_pydata.json["extensions"]["VRM"]["meta"]:
+        if re.match("CC(.*)ND(.*)", vrm_pydata.json["extensions"]["VRM"]["meta"]["licenseName"]) is not None:
+            raise Exception("This VRM is not allowed to Edit. CHECK ITS LICENSE　改変不可Licenseです。")
     #オリジナルライセンスに対する注意
-    if vrm_pydata.json["extensions"]["VRM"]["meta"]["licenseName"] == "Other":
-        print("Is this VRM allowed to Edit? CHECK IT LICENSE")
+        if vrm_pydata.json["extensions"]["VRM"]["meta"]["licenseName"] == "Other":
+            print("Is this VRM allowed to Edit? CHECK IT LICENSE")
     
     
     texture_rip(vrm_pydata,body_binary)
@@ -94,6 +95,8 @@ def texture_rip(vrm_pydata,body_binary):
     binary_reader = Binaly_Reader(body_binary)
     #ここ画像切り出し #blenderはバイト列から画像を読み込む術がないので、画像ファイルを書き出して、それを読み込むしかない。
     vrm_dir_path = os.path.dirname(os.path.abspath(vrm_pydata.filepath))
+    if not "images" in vrm_pydata.json:
+        return 
     for id,image_prop in enumerate(vrm_pydata.json["images"]):
         if "extra" in image_prop:
             image_name = image_prop["extra"]["name"]

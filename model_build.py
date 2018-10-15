@@ -122,10 +122,11 @@ def make_material(vrm_pydata,textures):
         b_mat.diffuse_color = mat.base_color[0:3]
         b_mat.use_transparency = True
         b_mat.alpha = 1
-        ts = b_mat.texture_slots.add()
-        ts.texture = textures[mat.color_texture_index]
-        ts.use_map_alpha = True
-        ts.blend_type = 'MULTIPLY'
+        if mat.color_texture_index is not None:
+            ts = b_mat.texture_slots.add()
+            ts.texture = textures[mat.color_texture_index]
+            ts.use_map_alpha = True
+            ts.blend_type = 'MULTIPLY'
         mat_dict[index] = b_mat
     return mat_dict
 
@@ -211,14 +212,15 @@ def make_mesh_objects(vrm_pydata,b_bones,b_armature,b_mat_dict):
         obj.data.materials.append(b_mat_dict[pymesh.material_index])
         
         #vertex_color　なぜかこれだけ面基準で、loose verts and edgesに色は塗れない
-        #FIXME テスト (懸案：cleaningで頂点結合でデータ物故割れる説)
+        #また、頂点カラーにalpha（４要素目）がないから完全対応は無理
+        #TODO テスト (懸案：cleaningで頂点結合でデータ物故割れる説)
         vcolor_count = 0
         while True:
             vc_color_name = "COLOR_{}".format(vcolor_count)
             if hasattr(pymesh,vc_color_name):
                 vc = b_mesh.vertex_colors.new(name = vc_color_name)
-                for v_index,col in enumerate(vc):
-                    vc.data[v_index].color = getattr(pymesh,vc_color_name)[flatten_vrm_mesh_vert_index(v_index)]
+                for v_index,col in enumerate(vc.data):
+                    vc.data[v_index].color = getattr(pymesh,vc_color_name)[flatten_vrm_mesh_vert_index[v_index]][0:3]
                 vcolor_count += 1
             else:
                 break

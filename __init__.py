@@ -8,6 +8,7 @@ https://opensource.org/licenses/mit-license.php
 import bpy
 from bpy_extras.io_utils import ImportHelper
 from . import vrm_load,model_build
+from . import model_symmetrizer
 import os
 
 
@@ -50,29 +51,6 @@ def menu_import(self, context):
     self.layout.operator(ImportVRM.bl_idname, text="VRM (.vrm)")
 
 
-
-class VRM_HELPER(bpy.types.Operator):
-    bl_idname = "vrm.float_error_fix"
-    bl_label = "float error fix"
-    bl_description = "centerize by active vertex"
-    bl_options = {'REGISTER', 'UNDO'}
-    
-    def execute(self, context):
-        import bmesh
-        bm = bmesh.from_edit_mesh(context.active_object.data)
-        if len(bm.select_history) != 0:
-            x_error = bm.select_history[-1].co[0]
-            for v in bm.verts:
-                v.co[0] -= x_error
-            context.active_object.data.update()
-            context.scene.update()
-            bm.free()
-            return {"FINISHED"}
-        else:
-            print("PLEASE SELECT CENTOR VERTS")
-            return{"PASS_THROUGH"}
-
-
 class UI_controller(bpy.types.Panel):
     bl_label = "vrm import helper"
     #どこに置くかの定義
@@ -87,27 +65,32 @@ class UI_controller(bpy.types.Panel):
         else:
             return False
     def draw(self, context):
-        self.layout.operator("vrm.float_error_fix")
+        self.layout.label(icon ="ERROR" ,text="EXPERIMENTAL!!!")
+        self.layout.prop(context.scene,"vrm_thoreshold")
+        self.layout.operator(model_symmetrizer.Symmetrizer.bl_idname)
 
 
 
 classes = (
     ImportVRM,
-    VRM_HELPER,
+    model_symmetrizer.Symmetrizer,
     UI_controller
 )
 
 
 # アドオン有効化時の処理
 def register():
+    model_symmetrizer.add_prop()
     for cls in classes:
         bpy.utils.register_class(cls)
     bpy.types.INFO_MT_file_import.append(menu_import)
+    
  
 
 
 # アドオン無効化時の処理
 def unregister():
+    model_symmetrizer.del_prop()
     bpy.types.INFO_MT_file_import.remove(menu_import)
     for cls in classes:
         bpy.utils.unregister_class(cls)

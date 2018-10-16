@@ -18,6 +18,7 @@
 -  pydata_factory.py:  同上<br>
 -  V_Types.py： 文字通りの構造体が複数<br>
 -  gl_const.py：定数集<br>
+-  model_symmetrizer.py:実験的実装　機能は文字通り。うまくいかなくてもめげない。 <br>
 ## 上記をフォルダにまとめてaddonsフォルダに突っ込んで有効化(TESTINGの中にいる)したら左上FileからImport->VRM!
 
 ## 機能説明

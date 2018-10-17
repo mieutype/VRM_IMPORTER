@@ -60,15 +60,21 @@ class UI_controller(bpy.types.Panel):
 
     @classmethod
     def poll(self, context):
+        return True
+
+    def draw(self, context):
+        self.layout.label(text="if you select armature")
+        self.layout.label(text="armature renamer is show")
+        self.layout.label(text="if you in MESH EDIT")
+        self.layout.label(text="symmetry button is show")
+        self.layout.label(text="*symmetry is in default blender")
         if context.mode == "OBJECT":
             if context.active_object is not None:
                 if context.active_object.type == 'ARMATURE':
-                    return True
-        else:
-            return False
-    def draw(self, context):
-        self.layout.label(icon ="ERROR" ,text="EXPERIMENTAL!!!")
-        self.layout.operator(VRM_HELPER.Bones_rename.bl_idname)
+                    self.layout.label(icon ="ERROR" ,text="EXPERIMENTAL!!!")
+                    self.layout.operator(VRM_HELPER.Bones_rename.bl_idname)
+        if context.mode == "EDIT_MESH":
+            self.layout.operator(bpy.ops.mesh.symmetry_snap.idname_py())
 
 
 

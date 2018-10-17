@@ -8,7 +8,7 @@ https://opensource.org/licenses/mit-license.php
 import bpy
 from bpy_extras.io_utils import ImportHelper
 from . import vrm_load,model_build
-from . import model_symmetrizer
+from . import VRM_HELPER
 import os
 
 
@@ -60,27 +60,27 @@ class UI_controller(bpy.types.Panel):
 
     @classmethod
     def poll(self, context):
-        if context.mode == "EDIT_MESH":
-            return True
+        if context.mode == "OBJECT":
+            if context.active_object is not None:
+                if context.active_object.type == 'ARMATURE':
+                    return True
         else:
             return False
     def draw(self, context):
         self.layout.label(icon ="ERROR" ,text="EXPERIMENTAL!!!")
-        self.layout.prop(context.scene,"vrm_thoreshold")
-        self.layout.operator(model_symmetrizer.Symmetrizer.bl_idname)
+        self.layout.operator(VRM_HELPER.Bones_rename.bl_idname)
 
 
 
 classes = (
     ImportVRM,
-    model_symmetrizer.Symmetrizer,
+    VRM_HELPER.Bones_rename,
     UI_controller
 )
 
 
 # アドオン有効化時の処理
 def register():
-    model_symmetrizer.add_prop()
     for cls in classes:
         bpy.utils.register_class(cls)
     bpy.types.INFO_MT_file_import.append(menu_import)
@@ -90,7 +90,6 @@ def register():
 
 # アドオン無効化時の処理
 def unregister():
-    model_symmetrizer.del_prop()
     bpy.types.INFO_MT_file_import.remove(menu_import)
     for cls in classes:
         bpy.utils.unregister_class(cls)

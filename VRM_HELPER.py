@@ -27,3 +27,30 @@ class Bones_rename(bpy.types.Operator):
                     tmp += RL
                     x.name = tmp
         return {"FINISHED"}
+
+
+import json
+from collections import OrderedDict
+import os
+
+class Vroid2VRC_ripsync_from_json_recipe(bpy.types.Operator):
+    bl_idname = "vrm.ripsync_vrm"
+    bl_label = "make ripsync4VRC"
+    bl_description = "make ripsync from Vroid to VRC by json"
+    bl_options = {'REGISTER', 'UNDO'}
+    
+    def execute(self, context):
+        recipe_uri =os.path.join(os.path.dirname(__file__) ,"Vroid2vrc_ripsync_recipe.json")
+        recipe = None
+        with open(recipe_uri,"rt") as raw_recipe:
+            recipe = json.loads(raw_recipe.read(),object_pairs_hook=OrderedDict)
+        for shapekey_name,based_values in recipe["shapekeys"].items():
+            for k in bpy.context.active_object.data.shape_keys.key_blocks:
+                k.value = 0.0
+            for based_shapekey_name,based_val in based_values.items():
+                bpy.context.active_object.data.shape_keys.key_blocks[based_shapekey_name].value = based_val
+            bpy.ops.object.shape_key_add(from_mix = True)
+            bpy.context.active_object.data.shape_keys.key_blocks[-1].name = shapekey_name
+        for k in bpy.context.active_object.data.shape_keys.key_blocks:
+                k.value = 0.0
+        return {"FINISHED"}

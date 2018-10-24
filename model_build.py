@@ -30,7 +30,7 @@ class Blend_model():
         self.texture_load(vrm_pydata)
         self.make_armature(vrm_pydata)
         self.make_material(vrm_pydata)
-        self.make_mesh_objects(vrm_pydata)
+        self.make_primitive_mesh_objects(vrm_pydata)
         self.json_dump(vrm_pydata)
         self.cleaning_data()
         self.axis_transform()
@@ -71,23 +71,23 @@ class Blend_model():
         self.armature = bpy.context.object
         self.armature.name = vrm_pydata.json["extensions"]["VRM"]["meta"]["title"]
         self.bones = dict()
-        def bone_chain(id,parentID):
+        def bone_chain(id,parent_id):
             if id == -1:#自身がrootのrootの時
                 pass
             else:
                 py_bone = vrm_pydata.bones_dict[id]
                 b = self.armature.data.edit_bones.new(py_bone.name)
-                if parentID == -1:
-                    parentPos = [0,0,0]
+                if parent_id == -1:
+                    parent_pos = [0,0,0]
                 else:
-                    parentPos = self.bones[parentID].head
-                b.head = numpy.array(parentPos)+numpy.array(py_bone.position)
+                    parent_pos = self.bones[parent_id].head
+                b.head = numpy.array(parent_pos)+numpy.array(py_bone.position)
                 #temprary tail pos(gltf doesn't have bone. there defines as joints )
                 def vector_length(bone_vector):
                     return sqrt(pow(bone_vector[0],2)+pow(bone_vector[1],2)+pow(bone_vector[2],2))
                 #gltfは関節で定義されていて骨の長さとか向きとかないからまあなんかそれっぽい方向にボーンを向けて伸ばしたり縮めたり
                 if py_bone.children == None:
-                    if parentID == -1:#唯我独尊：上向けとけ
+                    if parent_id == -1:#唯我独尊：上向けとけ
                         b.tail = [b.head[0],b.head[1]+0.05,b.head[2]]
                     else:#normalize lenght to 0.03　末代：親から距離をちょっととる感じ
                         lengh = vector_length(py_bone.position)
@@ -112,8 +112,8 @@ class Blend_model():
                         
                 #end tail pos    
                 self.bones[id] = b
-                if parentID != -1:
-                    b.parent = self.bones[parentID]
+                if parent_id != -1:
+                    b.parent = self.bones[parent_id]
                 if py_bone.children != None:
                         for x in py_bone.children:
                             bone_chain(x,id)
@@ -184,7 +184,7 @@ class Blend_model():
             self.material_dict[index] = b_mat
         return 
 
-    def make_mesh_objects(self, vrm_pydata):
+    def make_primitive_mesh_objects(self, vrm_pydata):
         self.primitive_obj_dict = dict()
         morph_cache_dict = {} #key:tuple(POSITION,targets.POSITION),value:points_data
         #mesh_obj_build

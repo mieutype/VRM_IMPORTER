@@ -10,7 +10,7 @@ https://opensource.org/licenses/mit-license.php
 from .binaly_loader import Binaly_Reader
 from .gl_const import GL_CONSTANS as GLC
 from . import V_Types as VRM_Types
-from . import pydata_factory
+from . import vrm2pydata_factory
 import os,re,copy
 from math import sqrt,pow
 import json
@@ -213,13 +213,13 @@ def material_read(vrm_pydata):
     if "textures" in vrm_pydata.json:
         textures = vrm_pydata.json["textures"]
     for mat in vrm_pydata.json["materials"]:
-        vrm_pydata.materials.append(pydata_factory.material(mat,VRM_EXTENSION_material_promaties,textures))
+        vrm_pydata.materials.append(vrm2pydata_factory.material(mat,VRM_EXTENSION_material_promaties,textures))
 
 
     #node(ボーン)をﾊﾟｰｽする->親からの相対位置で記録されている
 def node_read(vrm_pydata):
     for i,bone in enumerate(vrm_pydata.json["nodes"]):
-        vrm_pydata.bones_dict[i] = pydata_factory.bone(bone)
+        vrm_pydata.bones_dict[i] = vrm2pydata_factory.bone(bone)
         #TODO こっからorigine_bone
         if "mesh" in bone.keys():
             vrm_pydata.origine_bones_dict[i] = [vrm_pydata.bones_dict[i],bone["mesh"]]

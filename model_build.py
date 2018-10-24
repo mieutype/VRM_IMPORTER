@@ -32,6 +32,7 @@ class Blend_model():
         self.make_material(vrm_pydata)
         self.make_primitive_mesh_objects(vrm_pydata)
         self.json_dump(vrm_pydata)
+        self.attach_vrm_attributes(vrm_pydata)
         self.cleaning_data()
         self.axis_transform()
         self.finishing(affected_object)
@@ -308,6 +309,18 @@ class Blend_model():
                     shape_data = absolutaize_morph_Positions(pymesh.POSITION,morphPos_and_index)
                     for i,co in enumerate(shape_data):
                         keyblock.data[i].co = co
+
+    def attach_vrm_attributes(self,vrm_pydata):
+        VRM_extensions = vrm_pydata.json["extensions"]["VRM"]
+        try:
+            humanbones_relations = VRM_extensions["humanoid"]["humanBones"]
+            for i,humanbone in enumerate(humanbones_relations):
+                self.armature.data.bones[vrm_pydata.json["nodes"][humanbone["node"]]["name"]]["humanBone"] = humanbone["bone"]
+        except Exception as e:
+            print(e)
+            pass
+            
+        return
 
     def json_dump(self, vrm_pydata):
         textblock = bpy.data.texts.new("{}.json".format(vrm_pydata.json["extensions"]["VRM"]["meta"]["title"]))

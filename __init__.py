@@ -15,7 +15,7 @@ import os
 bl_info = {
     "name":"VRM_IMPORTER",
     "author": "iCyP",
-    "version": (0, 3),
+    "version": (0, 2),
     "blender": (2, 79, 0),
     "location": "File->Import",
     "description": "VRM Importer",
@@ -43,7 +43,7 @@ class ImportVRM(bpy.types.Operator,ImportHelper):
 
     def execute(self,context):
         fdir = self.filepath
-        model_build.vrm_model_build(vrm_load.read_vrm(fdir))
+        model_build.Blend_model(vrm_load.read_vrm(fdir))
         return {'FINISHED'}
 
 

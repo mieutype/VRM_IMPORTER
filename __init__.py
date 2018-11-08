@@ -39,17 +39,18 @@ class ImportVRM(bpy.types.Operator,ImportHelper):
         options={'HIDDEN'}
     )
 
+    is_put_spring_bone_info = bpy.props.BoolProperty(name = "Put Collider Empty")
 
 
     def execute(self,context):
         fdir = self.filepath
-        model_build.Blend_model(vrm_load.read_vrm(fdir))
+        model_build.Blend_model(vrm_load.read_vrm(fdir),self.is_put_spring_bone_info)
         return {'FINISHED'}
 
 
 def menu_import(self, context):
-    self.layout.operator(ImportVRM.bl_idname, text="VRM (.vrm)")
-
+    op = self.layout.operator(ImportVRM.bl_idname, text="VRM (.vrm)")
+    op.is_put_spring_bone_info = False
 
 class UI_controller(bpy.types.Panel):
     bl_label = "vrm import helper"

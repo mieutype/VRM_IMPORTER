@@ -7,6 +7,7 @@ https://opensource.org/licenses/mit-license.php
 
 
 import bpy, bmesh
+from mathutils import Vector,Matrix
 from . import V_Types as VRM_Types
 from math import sqrt,pow
 import numpy
@@ -14,17 +15,18 @@ import json
 
 
 class Blend_model():
-    def __init__(self,vrm_pydata):
+    def __init__(self,vrm_pydata,is_put_spring_bone_info):
         self.textures = None
         self.armature = None
         self.bones = None
         self.material_dict = None
         self.primitive_obj_dict = None
         self.mesh_joined_objects = None
-        self.vrm_model_build(vrm_pydata)
+        self.spring_bones = None
+        self.vrm_model_build(vrm_pydata,is_put_spring_bone_info)
 
 
-    def vrm_model_build(self,vrm_pydata):
+    def vrm_model_build(self,vrm_pydata,is_put_spring_bone_info):
 
         affected_object = self.scene_init()
         self.texture_load(vrm_pydata)
@@ -35,6 +37,8 @@ class Blend_model():
         self.attach_vrm_attributes(vrm_pydata)
         self.cleaning_data()
         self.axis_transform()
+        if is_put_spring_bone_info:
+            self.put_spring_bone_info(vrm_pydata)
         self.finishing(affected_object)
         return 0
 
@@ -280,7 +284,7 @@ class Blend_model():
                 else:
                     break
 
-            #shapekey
+            #shapekey_data_factory with cache
             def absolutaize_morph_Positions(basePoints,morphTargetpos_and_index):
                 shape_key_Positions = []
                 morphTargetpos = morphTargetpos_and_index[0]
@@ -314,7 +318,7 @@ class Blend_model():
         VRM_extensions = vrm_pydata.json["extensions"]["VRM"]
         try:
             humanbones_relations = VRM_extensions["humanoid"]["humanBones"]
-            for i,humanbone in enumerate(humanbones_relations):
+            for humanbone in humanbones_relations:
                 self.armature.data.bones[vrm_pydata.json["nodes"][humanbone["node"]]["name"]]["humanBone"] = humanbone["bone"]
         except Exception as e:
             print(e)
@@ -377,3 +381,42 @@ class Blend_model():
             bpy.ops.object.transform_apply(rotation=True)
             obj.select = False
         return
+    
+    def put_spring_bone_info(self,vrm_pydata):
+        empties_list = []
+        if not "secondaryAnimation" in vrm_pydata.json["extensions"]["VRM"]:
+            print("no secondary animation object")
+            return empties_list
+        secondaryAnimation_json = vrm_pydata.json["extensions"]["VRM"]["secondaryAnimation"]
+        spring_rootbone_groups_json = secondaryAnimation_json["boneGroups"]
+        collider_groups_json = secondaryAnimation_json["colliderGroups"]
+        nodes_json = vrm_pydata.json["nodes"]
+        for bone_group in spring_rootbone_groups_json:
+            for bone_id in bone_group["bones"]:
+                bone = self.armature.data.bones[nodes_json[bone_id]["name"]]
+                for key, val in bone_group.items():
+                    if key == "bones":
+                        continue
+                    bone[key] = val
+
+        for collider_group in collider_groups_json:
+            collider_base_node = nodes_json[collider_group["node"]]
+            node_name = collider_base_node["name"]
+            for i, collider in enumerate(collider_group["colliders"]):
+                collider_name = "{}_collider_{}".format(node_name,i)
+                obj = bpy.data.objects.new(name = collider_name,object_data = None)
+                obj.parent = self.armature
+                obj.parent_type = "BONE"
+                obj.parent_bone = node_name
+                offset = [0]*3
+                for val, pos in zip(collider["offset"].values(), [0, 2, 1]):
+                    offset[pos] = val
+                offset[0] *= -1
+                
+                obj.matrix_world = self.armature.matrix_world * Matrix.Translation(offset) * self.armature.data.bones[node_name].matrix_local
+                obj.empty_draw_size = collider["radius"]  #半径*2
+                obj.empty_draw_type = "SPHERE"
+                bpy.context.scene.objects.link(obj)
+                empties_list.append(obj)
+                
+        return empties_list

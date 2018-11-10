@@ -99,10 +99,10 @@ class Blend_model():
                         lengh *= 30
                         if lengh <= 0.01:#0除算除けと気分
                             lengh =0.01
-                        posDiff = [py_bone.position[0]/lengh,py_bone.position[1]/lengh,py_bone.position[2]/lengh]
+                        posDiff = [py_bone.position[i]/lengh for i in range(3)]
                         if posDiff == [0.0,0.0,0.0]:
                             posDiff[1] += 0.01 #ボーンの長さが0だとOBJECT MODEに戻った時にボーンが消えるので上向けとく
-                        b.tail = [b.head[0]+posDiff[0],b.head[1]+posDiff[1],b.head[2]+posDiff[2]]
+                        b.tail = [b.head[i]+posDiff[i] for i in range(3)]
                 else:#子供たちの方向の中間を見る
                     mean_relate_pos = numpy.array([0.0,0.0,0.0],dtype=numpy.float)
                     count=0
@@ -112,7 +112,7 @@ class Blend_model():
                     mean_relate_pos = mean_relate_pos / count
                     if vector_length(mean_relate_pos) == 0:#子の位置の平均が根本と同じなら上向けとく
                         mean_relate_pos[1] +=0.1
-                    b.tail =[b.head[0]+mean_relate_pos[0],b.head[1]+mean_relate_pos[1],b.head[2]+mean_relate_pos[2]]
+                    b.tail =[b.head[i] + mean_relate_pos[i] for i in range(3)]
 
                         
                 #end tail pos    
@@ -211,7 +211,7 @@ class Blend_model():
                     obj.location = node[0].position #origin boneの場所に移動
                     if len(node) == 3:
                         origin = node
-                    else:#len=2,skinがない場合
+                    else:#len=2 ≒ skinがない場合
                         obj.parent = self.armature
                         obj.parent_type = "BONE"
                         obj.parent_bone = node[0].name
@@ -220,26 +220,23 @@ class Blend_model():
             
             # vertex groupの作成
             if origin != None:
-                vg_list = [] # VertexGroupのリスト
                 nodes_index_list = vrm_pydata.skins_joints_list[origin[2]]
-                for n_index in nodes_index_list:
-                    obj.vertex_groups.new(vrm_pydata.nodes_dict[n_index].name)
-                    vg_list.append(obj.vertex_groups[-1])
                 # VertexGroupに頂点属性から一個ずつｳｪｲﾄを入れる用の辞書作り
                 if hasattr(pymesh,"JOINTS_0") and hasattr(pymesh,"WEIGHTS_0"):
-                    vg_dict = {}
+                    vg_dict = { #使うkey(bone名)のvalueを空のリストで初期化（中身まで全部内包表記で？キモすぎるからしない。
+                        vrm_pydata.nodes_dict[nodes_index_list[joint_id]].name : list() 
+                            for joint_id in [joint_id for joint_ids in pymesh.JOINTS_0 for joint_id in joint_ids]
+                    }
                     for v_index,(joint_ids,weights) in enumerate(zip(pymesh.JOINTS_0,pymesh.WEIGHTS_0)):
                         for joint_id,weight in zip(joint_ids,weights):
-                            node_id = vrm_pydata.skins_joints_list[origin[2]][joint_id]
-                            if vrm_pydata.nodes_dict[node_id].name in vg_dict.keys():
-                                vg_dict[vrm_pydata.nodes_dict[node_id].name].append([v_index,weight])#2個目以降のｳｪｲﾄ
-                            else:
-                                vg_dict[vrm_pydata.nodes_dict[node_id].name] = [[v_index,weight]]#1個目のｳｪｲﾄ（初期化兼）
+                            node_id = nodes_index_list[joint_id]
+                            vg_dict[vrm_pydata.nodes_dict[node_id].name].append([v_index,weight])
+                    vg_list = [] # VertexGroupのリスト
+                    for vg_key in vg_dict.keys():
+                        obj.vertex_groups.new(vg_key)
+                        vg_list.append(obj.vertex_groups[-1])
                     #頂点ﾘｽﾄに辞書から書き込む
                     for vg in vg_list:
-                        if not vg.name in vg_dict.keys():
-                            #print("unused vertex group")
-                            continue
                         weights = vg_dict[vg.name]
                         for w in weights:
                             if w[1] != 0.0:

@@ -9,7 +9,8 @@ class VRM_pydata(object):
             self,
             filepath = None,json = None,decoded_binary = None,
             image_propaties = None,meshes =None,materials = None,
-            bones_dict = None,origine_bones_dict = None, skins_joints_list = None
+            nodes_dict = None,origine_nodes_dict = None,
+            skins_joints_list = None , skins_root_node_list = None
             ):
         self.filepath = filepath
         self.json = json
@@ -18,9 +19,10 @@ class VRM_pydata(object):
         self.image_propaties = image_propaties if image_propaties is not None else []
         self.meshes = meshes if meshes is not None else []
         self.materials = materials if materials is not None else []
-        self.bones_dict = bones_dict if bones_dict is not None else {}
-        self.origine_bones_dict = origine_bones_dict if origine_bones_dict is not None else {}
+        self.nodes_dict = nodes_dict if nodes_dict is not None else {}
+        self.origine_nodes_dict = origine_nodes_dict if origine_nodes_dict is not None else {}
         self.skins_joints_list = skins_joints_list if skins_joints_list is not None else []
+        self.skins_root_node_list = skins_root_node_list if skins_root_node_list is not None else []
 
 
 class Mesh(object):
@@ -32,7 +34,7 @@ class Mesh(object):
 
 
 
-class Bone(object):
+class Node(object):
     def __init__(self):
         self.name = ""
         self.position = None

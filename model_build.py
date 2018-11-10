@@ -80,7 +80,7 @@ class Blend_model():
             if id == -1:#自身がrootのrootの時
                 pass
             else:
-                py_bone = vrm_pydata.bones_dict[id]
+                py_bone = vrm_pydata.nodes_dict[id]
                 b = self.armature.data.edit_bones.new(py_bone.name)
                 if parent_id == -1:
                     parent_pos = [0,0,0]
@@ -94,7 +94,7 @@ class Blend_model():
                 if py_bone.children == None:
                     if parent_id == -1:#唯我独尊：上向けとけ
                         b.tail = [b.head[0],b.head[1]+0.05,b.head[2]]
-                    else:#normalize lenght to 0.03　末代：親から距離をちょっととる感じ
+                    else:#normalize length to 0.03　末代：親から距離をちょっととる感じ
                         lengh = vector_length(py_bone.position)
                         lengh *= 30
                         if lengh <= 0.01:#0除算除けと気分
@@ -108,7 +108,7 @@ class Blend_model():
                     count=0
                     for childID in py_bone.children:
                         count +=1
-                        mean_relate_pos += vrm_pydata.bones_dict[childID].position
+                        mean_relate_pos += vrm_pydata.nodes_dict[childID].position
                     mean_relate_pos = mean_relate_pos / count
                     if vector_length(mean_relate_pos) == 0:#子の位置の平均が根本と同じなら上向けとく
                         mean_relate_pos[1] +=0.1
@@ -123,7 +123,8 @@ class Blend_model():
                         for x in py_bone.children:
                             bone_chain(x,id)
                 return 0
-        root_nodes = [node for scene in vrm_pydata.json["scenes"] for node in scene["nodes"]] #scenesのなかのsceneのなかのnodesのﾘｽﾄを展開
+        root_node_set = set(vrm_pydata.skins_root_node_list)
+        root_nodes =  root_node_set if root_node_set else [node for scene in vrm_pydata.json["scenes"] for node in scene["nodes"]] 
         while len(root_nodes):
             bone_chain(root_nodes.pop(),-1)
         #call when bone built    
@@ -203,9 +204,9 @@ class Blend_model():
             else: 
                 self.primitive_obj_dict[pymesh.object_id].append(obj)
             #kuso of kuso kakugosiro
-            #origin 0:ﾎﾞｰﾝ 1:mesh 2:skin
+            #origin 0:Vtype_Node 1:mesh 2:skin
             origin = None
-            for key,node in vrm_pydata.origine_bones_dict.items():
+            for key,node in vrm_pydata.origine_nodes_dict.items():
                 if node[1] == pymesh.object_id:
                     obj.location = node[0].position #origin boneの場所に移動
                     if len(node) == 3:
@@ -222,7 +223,7 @@ class Blend_model():
                 vg_list = [] # VertexGroupのリスト
                 nodes_index_list = vrm_pydata.skins_joints_list[origin[2]]
                 for n_index in nodes_index_list:
-                    obj.vertex_groups.new(vrm_pydata.bones_dict[n_index].name)
+                    obj.vertex_groups.new(vrm_pydata.nodes_dict[n_index].name)
                     vg_list.append(obj.vertex_groups[-1])
                 # VertexGroupに頂点属性から一個ずつｳｪｲﾄを入れる用の辞書作り
                 if hasattr(pymesh,"JOINTS_0") and hasattr(pymesh,"WEIGHTS_0"):
@@ -230,10 +231,10 @@ class Blend_model():
                     for v_index,(joint_ids,weights) in enumerate(zip(pymesh.JOINTS_0,pymesh.WEIGHTS_0)):
                         for joint_id,weight in zip(joint_ids,weights):
                             node_id = vrm_pydata.skins_joints_list[origin[2]][joint_id]
-                            if vrm_pydata.bones_dict[node_id].name in vg_dict.keys():
-                                vg_dict[vrm_pydata.bones_dict[node_id].name].append([v_index,weight])#2個目以降のｳｪｲﾄ
+                            if vrm_pydata.nodes_dict[node_id].name in vg_dict.keys():
+                                vg_dict[vrm_pydata.nodes_dict[node_id].name].append([v_index,weight])#2個目以降のｳｪｲﾄ
                             else:
-                                vg_dict[vrm_pydata.bones_dict[node_id].name] = [[v_index,weight]]#1個目のｳｪｲﾄ（初期化兼）
+                                vg_dict[vrm_pydata.nodes_dict[node_id].name] = [[v_index,weight]]#1個目のｳｪｲﾄ（初期化兼）
                     #頂点ﾘｽﾄに辞書から書き込む
                     for vg in vg_list:
                         if not vg.name in vg_dict.keys():

@@ -85,8 +85,9 @@ def read_vrm(model_path):
 
     mesh_read(vrm_pydata)
     material_read(vrm_pydata)
-    node_read(vrm_pydata)
     skin_read(vrm_pydata)
+    node_read(vrm_pydata)
+
 
     return vrm_pydata
 
@@ -216,17 +217,6 @@ def material_read(vrm_pydata):
         vrm_pydata.materials.append(vrm2pydata_factory.material(mat,VRM_EXTENSION_material_promaties,textures))
 
 
-    #node(ボーン)をﾊﾟｰｽする->親からの相対位置で記録されている
-def node_read(vrm_pydata):
-    for i,bone in enumerate(vrm_pydata.json["nodes"]):
-        vrm_pydata.bones_dict[i] = vrm2pydata_factory.bone(bone)
-        #TODO こっからorigine_bone
-        if "mesh" in bone.keys():
-            vrm_pydata.origine_bones_dict[i] = [vrm_pydata.bones_dict[i],bone["mesh"]]
-            if "skin" in bone.keys():
-                vrm_pydata.origine_bones_dict[i].append(bone["skin"])
-            else:
-                print(bone["name"] + "is not have skin")
 
     #skinをパース　->バイナリの中身はskining実装の横着用
     #skinのjointsの(nodesの)indexをvertsのjoints_0は指定してる
@@ -235,7 +225,20 @@ def node_read(vrm_pydata):
 def skin_read(vrm_pydata):
     for skin in vrm_pydata.json["skins"]:
         vrm_pydata.skins_joints_list.append(skin["joints"])
+        if "skeleton" in skin.keys():
+            vrm_pydata.skins_root_node_list.append(skin["skeleton"])
 
+    #node(ボーン)をﾊﾟｰｽする->親からの相対位置で記録されている
+def node_read(vrm_pydata):
+    for i,node in enumerate(vrm_pydata.json["nodes"]):
+        vrm_pydata.nodes_dict[i] = vrm2pydata_factory.bone(node)
+        #TODO こっからorigine_bone
+        if "mesh" in node.keys():
+            vrm_pydata.origine_nodes_dict[i] = [vrm_pydata.nodes_dict[i],node["mesh"]]
+            if "skin" in node.keys():
+                vrm_pydata.origine_nodes_dict[i].append(node["skin"])
+            else:
+                print(node["name"] + "is not have skin")
 
 
 

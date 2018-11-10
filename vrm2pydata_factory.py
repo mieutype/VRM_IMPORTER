@@ -59,18 +59,18 @@ def material(mat,materialPropaties,textures)->VRM_Types.Material:
 
 
 
-def bone(node)->VRM_Types.Bone:
-    v_bone = VRM_Types.Bone()
-    v_bone.name = node["name"]
-    v_bone.position = node["translation"]
-    v_bone.rotation = node["rotation"]
-    v_bone.scale = node["scale"]
+def bone(node)->VRM_Types.Node:
+    v_node = VRM_Types.Node()
+    v_node.name = node["name"]
+    v_node.position = node["translation"]
+    v_node.rotation = node["rotation"]
+    v_node.scale = node["scale"]
     if "children" in node:
         if type(node["children"]) is int:
-            v_bone.children = []
-            v_bone.children.append(node["children"])
+            v_node.children = []
+            v_node.children.append(node["children"])
         else:
-            v_bone.children = node["children"]
+            v_node.children = node["children"]
     else:
-        v_bone.children = None
-    return v_bone
+        v_node.children = None
+    return v_node

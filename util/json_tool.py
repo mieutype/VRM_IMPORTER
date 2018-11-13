@@ -15,7 +15,8 @@ with open(read_path, "rb") as f:
     filetype = read_path.split(".")[-1]
     if filetype == "vrm":
         bi = f.read()
-        bi_size = struct.unpack("<I", bi[12:16])[0]
+        magic = 12 #offset from header
+        bi_size = struct.unpack("<I", bi[magic:magic+4])[0]
         magic = 20 #offset from header
         loaded_json = json.loads(bi[magic:magic+bi_size].decode("utf-8"))
     elif filetype =="json":

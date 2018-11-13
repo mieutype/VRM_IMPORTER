@@ -23,7 +23,7 @@ from collections import OrderedDict
 def parse_glb(data: bytes):
     reader = Binaly_Reader(data)
     magic = reader.read_str(4)
-    if magic != b'glTF':
+    if magic != 'glTF':
         raise Exception('magic not found: #{}'.format(magic))
 
     version = reader.read_as_dataType(GLC.UNSIGNED_INT)
@@ -50,9 +50,9 @@ def parse_glb(data: bytes):
         chunk_data = reader.read_binaly(chunk_size)
         size -= chunk_size
 
-        if chunk_type == b'BIN\x00':
+        if chunk_type == 'BIN\x00':
             body = chunk_data
-        elif chunk_type == b'JSON':
+        elif chunk_type == 'JSON':
             json_str = chunk_data.decode('utf-8')#blenderのpythonverが古く自前decode要す
         else:
             raise Exception('unknown chunk_type: {}'.format(chunk_type))

@@ -20,7 +20,7 @@ class Binaly_Reader:
     def read_str(self, size):
         result = self.data[self.pos: self.pos + size]
         self.pos += size
-        return result.strip()
+        return result.decode("utf-8")
 
     def read_binaly(self, size):
         result = self.data[self.pos: self.pos + size]
@@ -29,7 +29,7 @@ class Binaly_Reader:
 
     def read_uint(self):
         #unpackは内容の個数に関わらずタプルで返すので[0]が必要
-        result = struct.unpack('<I', self.data[self.pos:self.pos + 4])[0]
+        result = struct.unpack('<I',self.data[self.pos:self.pos + 4])[0]
         self.pos += 4
         return result
 
@@ -64,6 +64,9 @@ class Binaly_Reader:
             return self.read_short()
         elif dataType == GL_CONSTANS.FLOAT:
             return self.read_float()
+        else:
+            print("unsuppoted type : {}".format(dataType))
+            raise Exception
             
 
 

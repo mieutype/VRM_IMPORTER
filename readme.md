@@ -16,6 +16,8 @@
 -  model_build.py pythonデータをblenderに書き込む。砂上の楼閣レベルの品、特にblenderに書き込む側<br>
 -  binaly_loader： 名前の通り。上の補助。<br>
 -  pydata_factory.py:  同上<br>
+-  vrm2pydata_factory.py : (ry <br>
+-  Vroid2vrc_ripsync_recipe.json : shape_key生成ﾚｼﾋﾟ<br>
 -  V_Types.py： 文字通りの構造体が複数<br>
 -  gl_const.py：定数集<br>
 -  model_symmetrizer.py:実験的実装　機能は文字通り。うまくいかなくてもめげない。 <br>
@@ -28,6 +30,7 @@
     - 同じフォルダ以外も要望があれば、個人的開発ポリシーに反しない範囲で実装可能
     - ※すでに*同名のテクスチャがある場合、上書きしない*ようになっているので、注意してください。(不慮の上書き防止の仕様です)
  - VRMのjsonをblender内のテキストエディタに書き出しているので、誰かがVRMのjsonエディタを作れば物理とかが簡単に設定できるようになるかもしれない。
+ - こっそりオプションを付けたので、物理情報を見ることはできなくもなくなりました。
 ### 出来ないこと
  - VRMをカンペキにBlenderにimportする
      - 物理は現在できません。実現したとしても力業になるので、VRMに書き戻すのは厄介でしょう。

@@ -9,6 +9,7 @@ import bpy
 from bpy_extras.io_utils import ImportHelper
 from .importer import vrm_load,model_build
 from .misc import VRM_HELPER
+from .misc import glb_factory
 import os
 
 
@@ -52,7 +53,7 @@ def menu_import(self, context):
     op = self.layout.operator(ImportVRM.bl_idname, text="VRM (.vrm)")
     op.is_put_spring_bone_info = False
 
-class UI_controller(bpy.types.Panel):
+class VRM_IMPORTER_UI_controller(bpy.types.Panel):
     bl_label = "vrm import helper"
     #どこに置くかの定義
     bl_space_type = "VIEW_3D"
@@ -64,10 +65,10 @@ class UI_controller(bpy.types.Panel):
         return True
 
     def draw(self, context):
-        self.layout.label(text="if you select armature")
-        self.layout.label(text="armature renamer is show")
+        self.layout.label(text="if you select armature in object mode")
+        self.layout.label(text="armature renamer is shown")
         self.layout.label(text="if you in MESH EDIT")
-        self.layout.label(text="symmetry button is show")
+        self.layout.label(text="symmetry button is shown")
         self.layout.label(text="*symmetry is in default blender")
         if context.mode == "OBJECT":
             if context.active_object is not None:
@@ -87,7 +88,7 @@ classes = (
     ImportVRM,
     VRM_HELPER.Bones_rename,
     VRM_HELPER.Vroid2VRC_ripsync_from_json_recipe,
-    UI_controller
+    VRM_IMPORTER_UI_controller
 )
 
 

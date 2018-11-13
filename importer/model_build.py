@@ -381,7 +381,7 @@ class Blend_model():
         return
     
     def put_spring_bone_info(self,vrm_pydata):
-        empties_list = []
+
         if not "secondaryAnimation" in vrm_pydata.json["extensions"]["VRM"]:
             print("no secondary animation object")
             return empties_list
@@ -396,7 +396,8 @@ class Blend_model():
                     if key == "bones":
                         continue
                     bone[key] = val
-
+                    
+        empties_list = []
         for collider_group in collider_groups_json:
             collider_base_node = nodes_json[collider_group["node"]]
             node_name = collider_base_node["name"]

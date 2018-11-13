@@ -7,8 +7,8 @@ https://opensource.org/licenses/mit-license.php
 
 import bpy
 from bpy_extras.io_utils import ImportHelper
-from . import vrm_load,model_build
-from . import VRM_HELPER
+from .importer import vrm_load,model_build
+from .misc import VRM_HELPER
 import os
 
 

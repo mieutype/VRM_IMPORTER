@@ -9,7 +9,7 @@ import json
 import tkinter
 import tkinter.filedialog
 import struct
-read_path = tkinter.filedialog.askopenfilename()
+read_path = tkinter.filedialog.askopenfilename(filetypes=[("vrm,json","*.vrm;*.json")])
 loaded_json =""
 with open(read_path, "rb") as f:
     filetype = read_path.split(".")[-1]

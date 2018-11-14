@@ -4,7 +4,7 @@ Released under the MIT license
 https://opensource.org/licenses/mit-license.php
 
 """
-from ..gl_const import GL_CONSTANTS
+from ..gl_const import GL_CONSTANS
 import json
 from collections import OrderedDict
 class Glb_bin_collection:
@@ -84,7 +84,7 @@ class Image_bin(Base_bin):
 class Glb_bin(Base_bin):
 	def __init__(self,
 			bin="",
-			array_type="SCALAR", component_type=GL_CONSTANTS.FLOAT,
+			array_type="SCALAR", component_type=GL_CONSTANS.FLOAT,
 			array_count=0,
 			min_max_tuple = None,
 			glb_bin_collection = None):

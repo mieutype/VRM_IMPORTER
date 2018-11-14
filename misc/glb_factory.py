@@ -9,6 +9,7 @@ from ..gl_const import GL_CONSTANS
 from collections import OrderedDict
 import json
 import struct
+import sys.float_info
 import bpy,bmesh
 
 class Glb_obj():
@@ -137,10 +138,14 @@ class Glb_obj():
 			bpy.ops.object.mode_set(mode='EDIT')
 			bm = bmesh.from_edit_mesh(mesh.data)
 
-			primitive_index_dic = {id:[] for id in range(len(self.json_dic["materials"]))}
+			primitive_index_bin_dic = {id:b"" for id in range(len(self.json_dic["materials"]))}
 			mat_id_dic = {mat.name:id for id,mat in enumerate(self.json_dic["materials"])} #tmpolary used
 			material_slot_dic = {id:mat.name for mat in mesh.material_slots}  #tmpolary used
+			shape_bin_dic = {shape.name:b"" for shape in mesh.data.shape_keys.key_blocks[1:]}#0番目Basisは省く
+			fmin,fmax = sys.float_info.min,sys.float_info.max
+			shape_min_max_dic = {shape.name:[[fmax,fmax,fmax],[fmin,fmin,fmin]] for shape in mesh.data.shape_keys.key_blocks}
 			position_bin =b""
+			position_min_max = [[fmax,fmax,fmax],[fmin,fmin,fmin]]
 			normal_bin = b""
 			joints_bin = b""
 			weights_bin = b""
@@ -148,21 +153,37 @@ class Glb_obj():
 			unique_vertex_id_dic = {} #loop verts id : base vertex id (uv違いを同じ頂点番号で管理されているので)
 			uvlayers_dic = {id:uvlayer.name for id,uvlayer in enumerate(mesh.uv_layers)}
 			texcord_bins = {id:b"" for id in uvlayers_dic.keys()}
+			f_vec4_packer = struct.Struct("<ffff")
 			f_vec3_packer = struct.Struct("<fff")
 			f_pair_packer = struct.Struct("<ff")
+			I_scalar_packer = struct.Struct("<I")
+			I_vec4_packer = struct.Struct("<IIII")
+			def min_max(minmax,position):
+				for i in range(3):
+					minmax[0][i] = vert_location[i] if vert_location[i] < minmax[0][i] else minmax[0][i]
+					minmax[1][i] = vert_location[i] if vert_location[i] > minmax[1][i] else minmax[1][i]
+					return
 			for face in bm.faces:
+				#このへん絶対超遅い
 				for loop in face.loops:
 					for id,uvlayer_name in uvlayers_dic.items():
 						uv_layer = bm.loops.layers.uv[uvlayer_name]
 						uv = loop[uv_layer].uv
 						texcord_bins[id] += f_pair_packer(uv[0],-uv[1]) #blenderとglbのuvは上下逆
-					#このへん絶対超遅い
-					position_bin += f_vec3_packer(axis_blender_to_glb([loop.vert.co[i] for i in range(3)]))
-					normal_bin += f_vec3_packer(axis_blender_to_glb([loop.vert.normal[i]for i in range(3)]))
+					for shape_name,shape_bin in shape_bin_dic.items():
+						shape_layer = bm.verts.layers.shape[shape_name]
+						vert_location = axis_blender_to_glb(loop.vert[shape_layer])
+						shape_bin += f_vec3_packer(vert_location)
+						min_max(shape_min_max_dic[shape_name,vert_location])
+					vert_location = axis_blender_to_glb(loop.vert.co)
+					position_bin += f_vec3_packer(vert_location)
+					min_max(position_min_max,vert_location)
+					normal_bin += f_vec3_packer(axis_blender_to_glb(loop.vert.normal))
 					unique_vertex_id_dic[unique_vertex_id,vert.index]
-					primitive_index_dic[mat_id_dic[material_slot_dic[face.material_index]]].append(unique_vertex_id)
+					primitive_index_dic[mat_id_dic[material_slot_dic[face.material_index]]] += I_scalar_packer(unique_vertex_id)
 				unique_vertex_id += 1
-					
+			#DONE:position uv normal morph
+			#TODO JOINT:vec4 WEIGHT:vec4
 			#endregion
 		return
 

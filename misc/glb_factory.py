@@ -124,6 +124,7 @@ class Glb_obj():
 		return
 
 	def mesh_to_bin_and_dic(self):
+		self.json_dic["meshes"] = []
 		for id,mesh in enumerate([obj for obj in bpy.context.selected_objects if obj.type == "MESH"]):
 			self.json_dic["nodes"].append({
 					"name":mesh.name,
@@ -185,10 +186,10 @@ class Glb_obj():
 						uv_layer = bm.loops.layers.uv[uvlayer_name]
 						uv = loop[uv_layer].uv
 						texcord_bins[id] += f_pair_packer(uv[0],-uv[1]) #blenderとglbのuvは上下逆
-					for shape_name,shape_bin in shape_bin_dic.items(): 
+					for shape_name in shape_bin_dic.keys(): 
 						shape_layer = bm.verts.layers.shape[shape_name]
 						vert_location = self.axis_blender_to_glb( [loop.vert[shape_layer][i] - loop.vert.co[i] for i in range(3)])
-						shape_bin += f_vec3_packer(*vert_location)
+						shape_bin_dic[shape_name] += f_vec3_packer(*vert_location)
 						min_max(shape_min_max_dic[shape_name],vert_location)
 					weights = [0.0, 0.0, 0.0, 0.0]
 					magic = 9999999
@@ -236,9 +237,11 @@ class Glb_obj():
 					"JOINTS_0":joints_glb.accessor_id,
 					"WEIGHTS_0":weights_glb.accessor_id
 				}
-				primitive["attributes"].update({"TEXCOORD_{}".format(i):uv_glb for i,uv_glb in enumerate(uv_glbs)})
-				primitive["targets"]=[OrderedDict({"POSITION":morph_glb for morph_glb in morph_glbs})]
+				primitive["attributes"].update({"TEXCOORD_{}".format(i):uv_glb.accessor_id for i,uv_glb in enumerate(uv_glbs)})
+				primitive["targets"]=[{"POSITION":morph_glb.accessor_id} for morph_glb in morph_glbs]
 				primitive["extras"] = {"targetNames":[shape_name for shape_name in shape_bin_dic.keys()]} 
+				primitive_list.append(primitive)
+			self.json_dic["meshes"].append({"name":mesh.name,"primitives":primitive_list})
 
 			
 			#endregion hell

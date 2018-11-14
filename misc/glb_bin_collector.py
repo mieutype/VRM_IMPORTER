@@ -22,7 +22,7 @@ class Glb_bin_collection:
 			bin_dic["images"].append({
 				"name": img.name,
 				"bufferView": img.buffer_view_id,
-				"mineType": img.image_type
+				"mimeType": img.image_type
 				})
 			bin_dic["bufferViews"].append({
 				"buffer": 0,

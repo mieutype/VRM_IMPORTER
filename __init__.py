@@ -6,7 +6,7 @@ https://opensource.org/licenses/mit-license.php
 """
 
 import bpy
-from bpy_extras.io_utils import ImportHelper
+from bpy_extras.io_utils import ImportHelper,ExportHelper
 from .importer import vrm_load,model_build
 from .misc import VRM_HELPER
 from .misc import glb_factory
@@ -53,6 +53,31 @@ def menu_import(self, context):
     op = self.layout.operator(ImportVRM.bl_idname, text="VRM (.vrm)")
     op.is_put_spring_bone_info = False
 
+class ExportVRM(bpy.types.Operator,ExportHelper):
+    bl_idname = "export.vrm"
+    bl_label = "export VRM"
+    bl_description = "export VRM"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    filename_ext = '.vrm'
+    filter_glob = bpy.props.StringProperty(
+        default='*.vrm',
+        options={'HIDDEN'}
+    )
+
+    def execute(self,context):
+        fdir = self.filepath
+        factory = glb_factory.Glb_obj()
+        bin = factory.result
+        with open(fdir,"wb") as f:
+            f.write(bin)
+        return {'FINISHED'}
+
+
+def menu_export(self, context):
+    op = self.layout.operator(ExportVRM.bl_idname, text="VRM (.vrm)")
+
+
 class VRM_IMPORTER_UI_controller(bpy.types.Panel):
     bl_label = "vrm import helper"
     #どこに置くかの定義
@@ -86,6 +111,7 @@ class VRM_IMPORTER_UI_controller(bpy.types.Panel):
 
 classes = (
     ImportVRM,
+    ExportVRM,
     VRM_HELPER.Bones_rename,
     VRM_HELPER.Vroid2VRC_ripsync_from_json_recipe,
     VRM_IMPORTER_UI_controller
@@ -97,12 +123,14 @@ def register():
     for cls in classes:
         bpy.utils.register_class(cls)
     bpy.types.INFO_MT_file_import.append(menu_import)
+    bpy.types.INFO_MT_file_export.append(menu_export)
     
  
 
 
 # アドオン無効化時の処理
 def unregister():
+    bpy.types.INFO_MT_file_export.remove(menu_export)
     bpy.types.INFO_MT_file_import.remove(menu_import)
     for cls in classes:
         bpy.utils.unregister_class(cls)

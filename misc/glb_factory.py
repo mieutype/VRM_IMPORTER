@@ -9,7 +9,7 @@ from ..gl_const import GL_CONSTANS
 from collections import OrderedDict
 import json
 import struct
-import sys.float_info
+from sys import float_info
 import bpy,bmesh
 
 class Glb_obj():
@@ -28,7 +28,7 @@ class Glb_obj():
 		self.mesh_to_bin_and_dic() #add to node and scenes mesh_object
 		self.json_dic["scene"] = [0]
 		self.glTF_meta_to_dic()
-		#self.vrm_meta_to_dic()
+		#self.vrm_meta_to_dic() #colliderとかmetaとか....
 		self.finalize()
 		return self.result
 	@classmethod
@@ -147,7 +147,7 @@ class Glb_obj():
 				skin_id = self.json_dic["skins"][0]["joints"].index(node_id)
 				return skin_id
 			v_group_name_dic = {id:vg.name for vg in mesh.vertex_groups}
-			fmin,fmax = sys.float_info.min,sys.float_info.max
+			fmin,fmax = float_info.min,float_info.max
 			unique_vertex_id = 0
 			unique_vertex_id_dic = {} #loop verts id : base vertex id (uv違いを同じ頂点番号で管理されているので)
 			uvlayers_dic = {id:uvlayer.name for id,uvlayer in enumerate(mesh.uv_layers)}

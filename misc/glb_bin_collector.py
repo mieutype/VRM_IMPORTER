@@ -11,7 +11,7 @@ class Glb_bin_collection:
 	def __init__(self):
 		self.vertex_attribute_bins = []  #Glb_bin list
 		self.image_bins = []
-		self.bin = ""
+		self.bin = b""
 	def pack_all(self):
 		bin_dic = OrderedDict()
 		byteOffset = 0

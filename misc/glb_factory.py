@@ -18,7 +18,7 @@ class Glb_obj():
 		self.bin = b""
 		self.glb_bin_collector = Glb_bin_collection()
 		self.result = None
-
+		print("inited")
 	def convert_bpy2glb(self):
 		#TODO
 		self.armature_to_node_and_scenes_dic() #親のないboneは1つだけ as root_bone
@@ -31,11 +31,11 @@ class Glb_obj():
 		#self.vrm_meta_to_dic() #colliderとかmetaとか....
 		self.finalize()
 		return self.result
-	@classmethod
+	@staticmethod
 	def axis_blender_to_glb(vec3):
 		return [vec3[i]*t for i,t in zip([0,2,1],[-1,1,1])]
 
-	def armature_to_node_and_scenes_dic():
+	def armature_to_node_and_scenes_dic(self):
 		def mesh_object_to_node(obj):
 			node = {
 				"name":obj.name,
@@ -57,9 +57,10 @@ class Glb_obj():
 			if obj.type =="ARMATURE":
 				bone_id_dic = {b.name : obj_id + bone_id for bone_id,b in enumerate(obj.data.bones)}
 				def bone_to_node(b_bone):
+					parent_head = b_bone.parent.head_local if b_bone.parent is not None else [0,0,0]
 					node = {
 						"name":b_bone.name,
-						"translation":axis_blender_to_glb([b_bone.parent.head_local[i] - b_bone.head_local[i] for i in range(3)]),
+						"translation":self.axis_blender_to_glb([parent_head[i] - b_bone.head_local[i] for i in range(3)]),
 						"rotation":[0,0,0,1],
 						"scale":[1,1,1],
 						"children":[bone_id_dic[child.name] for child in b_bone.children]
@@ -72,7 +73,7 @@ class Glb_obj():
 						skin["skelton"] = root_bone_id
 						scene.append(root_bone_id)
 						nodes.append(bone_to_node(bone))
-						bone_children = bone.children
+						bone_children = [b for b in bone.children]
 						while bone_children:
 							child = bone_children.pop()
 							nodes.append(bone_to_node(child))
@@ -90,15 +91,16 @@ class Glb_obj():
 			with open(image.filepath_from_user(),"rb") as f:
 				image_bin = f.read()
 			name = image.name
-			Image_bin(image_bin,name,self.glb_bin_collector)
+			filetype = "image/"+image.file_format.lower()
+			Image_bin(image_bin,name,filetype,self.glb_bin_collector)
 		return
 
 	def texture_to_dic(self):
 		self.json_dic["samplers"] = [{
             "magFilter": GL_CONSTANS.LINEAR, #TODO 決め打ちすんな？
             "minFilter": GL_CONSTANS.LINEAR,
-            "wrapS": REPEAT,
-            "wrapT": REPEAT
+            "wrapS": GL_CONSTANS.REPEAT,
+            "wrapT": GL_CONSTANS.REPEAT
         }]
 		textures = []
 		for id in range(len(self.glb_bin_collector.image_bins)):
@@ -125,13 +127,14 @@ class Glb_obj():
 		for id,mesh in enumerate([obj for obj in bpy.context.selected_objects if obj.type == "MESH"]):
 			self.json_dic["nodes"].append({
 					"name":mesh.name,
-					"translation":mesh.location, #原点にいてほしいけどね
+					"translation":[mesh.location[i] for i in range(3)], #原点にいてほしいけどね, vectorのままだとjsonに出来ないからこうする
 					"rotation":[0,0,0,1],	#このへんは規約なので
 					"scale":[1,1,1],		#このへんは規約なので
 					"mesh":id,
 					"skin":0 #TODO　決め打ちってどうよ：一体のモデルなのだから２つもあっては困る(から決め打ち(やめろ(やだ))
 				})
 			#region hell
+			bpy.ops.object.mode_set(mode='OBJECT')
 			mesh.hide = False
 			mesh.hide_select = False
 			bpy.context.scene.objects.active = mesh
@@ -139,33 +142,37 @@ class Glb_obj():
 			bm = bmesh.from_edit_mesh(mesh.data)
 
 			#region tempolary_used
-			mat_id_dic = {mat.name:id for id,mat in enumerate(self.json_dic["materials"])} 
-			material_slot_dic = {id:mat.name for mat in mesh.material_slots} 
-			node_id_dic = {node["name"]:id for node in self.json_dic["nodes"]} 
+			mat_id_dic = {mat["name"]:id for id,mat in enumerate(self.json_dic["materials"])} 
+			material_slot_dic = {i:mat.name for i,mat in enumerate(mesh.material_slots)} 
+			node_id_dic = {node["name"]:i for i,node in enumerate(self.json_dic["nodes"])} 
 			def joint_id_from_node_name_solver(node_name):
 				node_id = node_id_dic[node_name]
 				skin_id = self.json_dic["skins"][0]["joints"].index(node_id)
 				return skin_id
-			v_group_name_dic = {id:vg.name for vg in mesh.vertex_groups}
+			v_group_name_dic = {i:vg.name for i,vg in enumerate(mesh.vertex_groups)}
 			fmin,fmax = float_info.min,float_info.max
 			unique_vertex_id = 0
 			unique_vertex_id_dic = {} #loop verts id : base vertex id (uv違いを同じ頂点番号で管理されているので)
-			uvlayers_dic = {id:uvlayer.name for id,uvlayer in enumerate(mesh.uv_layers)}
+			uvlayers_dic = {i:uvlayer.name for i,uvlayer in enumerate(mesh.data.uv_layers)}
 			#endregion  tempolary_used
 			primitive_index_bin_dic = OrderedDict({id:b"" for id in range(len(self.json_dic["materials"]))})
-			shape_bin_dic = OrderedDict({shape.name:b"" for shape in mesh.data.shape_keys.key_blocks[1:]})#0番目Basisは省く
-			shape_min_max_dic = OrderedDict({shape.name:[[fmax,fmax,fmax],[fmin,fmin,fmin]] for shape in mesh.data.shape_keys.key_blocks})
+			if mesh.data.shape_keys is None : 
+				shape_bin_dic = {}
+				shape_min_max_dic = {}
+			else:
+				shape_bin_dic = OrderedDict({shape.name:b"" for shape in mesh.data.shape_keys.key_blocks[1:]})#0番目Basisは省く
+				shape_min_max_dic = OrderedDict({shape.name:[[fmax,fmax,fmax],[fmin,fmin,fmin]] for shape in mesh.data.shape_keys.key_blocks})
 			position_bin =b""
 			position_min_max = [[fmax,fmax,fmax],[fmin,fmin,fmin]]
 			normal_bin = b""
 			joints_bin = b""
 			weights_bin = b""
 			texcord_bins = {id:b"" for id in uvlayers_dic.keys()}
-			f_vec4_packer = struct.Struct("<ffff")
-			f_vec3_packer = struct.Struct("<fff")
-			f_pair_packer = struct.Struct("<ff")
-			I_scalar_packer = struct.Struct("<I")
-			I_vec4_packer = struct.Struct("<IIII")
+			f_vec4_packer = struct.Struct("<ffff").pack
+			f_vec3_packer = struct.Struct("<fff").pack
+			f_pair_packer = struct.Struct("<ff").pack
+			I_scalar_packer = struct.Struct("<I").pack
+			I_vec4_packer = struct.Struct("<IIII").pack
 			def min_max(minmax,position):
 				for i in range(3):
 					minmax[0][i] = vert_location[i] if vert_location[i] < minmax[0][i] else minmax[0][i]
@@ -180,29 +187,34 @@ class Glb_obj():
 						texcord_bins[id] += f_pair_packer(uv[0],-uv[1]) #blenderとglbのuvは上下逆
 					for shape_name,shape_bin in shape_bin_dic.items(): 
 						shape_layer = bm.verts.layers.shape[shape_name]
-						vert_location = axis_blender_to_glb( [loop.vert[shape_layer][i] - loop.vert.co[i] for i in range(3)])
-						shape_bin += f_vec3_packer(vert_location)
-						min_max(shape_min_max_dic[shape_name,vert_location])
+						vert_location = self.axis_blender_to_glb( [loop.vert[shape_layer][i] - loop.vert.co[i] for i in range(3)])
+						shape_bin += f_vec3_packer(*vert_location)
+						min_max(shape_min_max_dic[shape_name],vert_location)
 					weights = [0.0, 0.0, 0.0, 0.0]
 					magic = 9999999
 					joints = [magic,magic,magic,magic]
 					for v_group in mesh.data.vertices[loop.vert.index].groups:						
-							weights.remove(3)
+							weights.pop()
 							weights.insert(0,v_group.weight)
-							joints.remove(3)
-							joints.insert(0,joint_id_from_node_name_solver(v_group_name_dic[v_group.group]))
-					joints_bin += I_vec4_packer(joints)
-					weights_bin += f_vec4_packer(weights) 
-					vert_location = axis_blender_to_glb(loop.vert.co)
-					position_bin += f_vec3_packer(vert_location)
+							joints.pop(3)
+							joints.insert(0,joint_id_from_node_name_solver(
+								v_group_name_dic[v_group.group])
+								)
+					joints_bin += I_vec4_packer(*joints)
+					weights_bin += f_vec4_packer(*weights) 
+					vert_location = self.axis_blender_to_glb(loop.vert.co)
+					position_bin += f_vec3_packer(*vert_location)
 					min_max(position_min_max,vert_location)
-					normal_bin += f_vec3_packer(axis_blender_to_glb(loop.vert.normal))
-					unique_vertex_id_dic[unique_vertex_id,vert.index]
+					normal_bin += f_vec3_packer(*self.axis_blender_to_glb(loop.vert.normal))
+					unique_vertex_id_dic[unique_vertex_id]=loop.vert.index
 					primitive_index_bin_dic[mat_id_dic[material_slot_dic[face.material_index]]] += I_scalar_packer(unique_vertex_id)
 				unique_vertex_id += 1
 			#DONE :index position, uv, normal, position morph,JOINT WEIGHT  
 			#TODO morph_normal, color...?
-			primitive_glbs_dic = OrderedDict({id:Glb_bin(index_bin,"SCALAR",GL_CONSTANS.UNSIGNED_INT,unique_vertex_id,None,self.glb_bin_collector)})
+			primitive_glbs_dic = OrderedDict({
+				mat_id:Glb_bin(index_bin,"SCALAR",GL_CONSTANS.UNSIGNED_INT,unique_vertex_id,None,self.glb_bin_collector)
+				for mat_id,index_bin in primitive_index_bin_dic.items()
+			})
 			pos_glb = Glb_bin(position_bin,"VEC3",GL_CONSTANS.FLOAT,unique_vertex_id,position_min_max,self.glb_bin_collector)
 			nor_glb = Glb_bin(normal_bin,"VEC3",GL_CONSTANS.FLOAT,unique_vertex_id,None,self.glb_bin_collector)
 			uv_glbs = [
@@ -226,7 +238,7 @@ class Glb_obj():
 				}
 				primitive["attributes"].update({"TEXCOORD_{}".format(i):uv_glb for i,uv_glb in enumerate(uv_glbs)})
 				primitive["targets"]=[OrderedDict({"POSITION":morph_glb for morph_glb in morph_glbs})]
-				primitive["extras"] = {"targetNames":[shape.name for shape in shape_bin_dic.keys()]} 
+				primitive["extras"] = {"targetNames":[shape_name for shape_name in shape_bin_dic.keys()]} 
 
 			
 			#endregion hell

@@ -67,8 +67,7 @@ class ExportVRM(bpy.types.Operator,ExportHelper):
 
     def execute(self,context):
         fdir = self.filepath
-        factory = glb_factory.Glb_obj()
-        bin = factory.result
+        bin =  glb_factory.Glb_obj().convert_bpy2glb()
         with open(fdir,"wb") as f:
             f.write(bin)
         return {'FINISHED'}

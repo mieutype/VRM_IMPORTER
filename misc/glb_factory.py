@@ -18,14 +18,13 @@ class Glb_obj():
 		self.bin = b""
 		self.glb_bin_collector = Glb_bin_collection()
 		self.result = None
-		print("inited")
 	def convert_bpy2glb(self):
 		#TODO
 		self.armature_to_node_and_scenes_dic() #親のないboneは1つだけ as root_bone
 		self.image_to_bin()
 		self.texture_to_dic() 
 		self.material_to_dic()
-		self.mesh_to_bin_and_dic() #add to node and scenes mesh_object
+		self.mesh_to_bin_and_dic() 
 		self.json_dic["scene"] = [0]
 		self.glTF_meta_to_dic()
 		#self.vrm_meta_to_dic() #colliderとかmetaとか....
@@ -44,13 +43,13 @@ class Glb_obj():
 				bone_id_dic = {b.name : bone_id for bone_id,b in enumerate(obj.data.bones)}
 				def bone_to_node(b_bone):
 					parent_head_local = b_bone.parent.head_local if b_bone.parent is not None else [0,0,0]
-					node = {
+					node = OrderedDict({
 						"name":b_bone.name,
 						"translation":self.axis_blender_to_glb([b_bone.head_local[i] - parent_head_local[i] for i in range(3)]),
 						"rotation":[0,0,0,1],
 						"scale":[1,1,1],
 						"children":[bone_id_dic[ch.name] for ch in b_bone.children]
-					}
+					})
 					if len(node["children"]) == 0:
 						node.pop("children")
 					return node
@@ -116,14 +115,14 @@ class Glb_obj():
 	def mesh_to_bin_and_dic(self):
 		self.json_dic["meshes"] = []
 		for id,mesh in enumerate([obj for obj in bpy.context.selected_objects if obj.type == "MESH"]):
-			self.json_dic["nodes"].append({
+			self.json_dic["nodes"].append(OrderedDict({
 					"name":mesh.name,
 					"translation":[mesh.location[i] for i in range(3)], #原点にいてほしいけどね, vectorのままだとjsonに出来ないからこうする
 					"rotation":[0,0,0,1],	#このへんは規約なので
 					"scale":[1,1,1],		#このへんは規約なので
 					"mesh":id,
 					"skin":0 #TODO　決め打ちってどうよ：一体のモデルなのだから２つもあっては困る(から決め打ち(やめろ(やだ))
-				})
+				}))
 			self.json_dic["scenes"][0]["nodes"].append(len(self.json_dic["nodes"])-1)
 			#region hell
 			bpy.ops.object.mode_set(mode='OBJECT')
@@ -224,7 +223,7 @@ class Glb_obj():
 						]
 			primitive_list = []
 			for primitive_id,index_glb in primitive_glbs_dic.items():
-				primitive = {"mode":4}
+				primitive = OrderedDict({"mode":4})
 				primitive["material"] = primitive_id
 				primitive["indices"] = index_glb.accessor_id
 				primitive["attributes"] = {

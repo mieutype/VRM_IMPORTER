@@ -19,37 +19,37 @@ class Glb_bin_collection:
 		bin_dic["images"] = []
 		for img in self.image_bins:
 			self.bin +=img.bin
-			bin_dic["images"].append({
+			bin_dic["images"].append(OrderedDict({
 				"name": img.name,
 				"bufferView": img.buffer_view_id,
 				"mimeType": img.image_type
-				})
-			bin_dic["bufferViews"].append({
+				}))
+			bin_dic["bufferViews"].append(OrderedDict({
 				"buffer": 0,
 				"byteOffset": byteOffset,
 				"byteLength": img.bin_length
-			})
+			}))
 			byteOffset += img.bin_length
 		bin_dic["accessors"] = []
 		for vab in self.vertex_attribute_bins:
 			self.bin += vab.bin
-			vab_dic = {
+			vab_dic = OrderedDict({
 			    "bufferView": vab.buffer_view_id,
 				"byteOffset": 0,
 				"type": vab.array_type,
 				"componentType": vab.component_type,
 				"count": vab.array_count,
 				"normalized": False
-			}
+			})
 			if vab.min_max:
 				vab_dic["min"] = vab.min_max[0]
 				vab_dic["max"] = vab.min_max[1]
 			bin_dic["accessors"].append(vab_dic)
-			bin_dic["bufferViews"].append({
+			bin_dic["bufferViews"].append(OrderedDict({
 				"buffer": 0,
 				"byteOffset": byteOffset,
 				"byteLength": vab.bin_length
-			})
+			}))
 			byteOffset += vab.bin_length
 		bin_dic["buffers"] = [{"byteLength":byteOffset}]
 

@@ -41,15 +41,15 @@ class Glb_obj():
 		skins = []
 		for obj_id,obj in enumerate(bpy.context.selected_objects):
 			if obj.type =="ARMATURE":
-				bone_id_dic = {b.name : obj_id + bone_id for bone_id,b in enumerate(obj.data.bones)}
+				bone_id_dic = {b.name : bone_id for bone_id,b in enumerate(obj.data.bones)}
 				def bone_to_node(b_bone):
-					parent_head = b_bone.parent.head_local if b_bone.parent is not None else [0,0,0]
+					parent_head_local = b_bone.parent.head_local if b_bone.parent is not None else [0,0,0]
 					node = {
 						"name":b_bone.name,
-						"translation":self.axis_blender_to_glb([parent_head[i] - b_bone.head_local[i] for i in range(3)]),
+						"translation":self.axis_blender_to_glb([b_bone.head_local[i] - parent_head_local[i] for i in range(3)]),
 						"rotation":[0,0,0,1],
 						"scale":[1,1,1],
-						"children":[bone_id_dic[child.name] for child in b_bone.children]
+						"children":[bone_id_dic[ch.name] for ch in b_bone.children]
 					}
 					if len(node["children"]) == 0:
 						node.pop("children")
@@ -62,12 +62,14 @@ class Glb_obj():
 						scene.append(root_bone_id)
 						nodes.append(bone_to_node(bone))
 						bone_children = [b for b in bone.children]
-						while bone_children:
+						while bone_children :
 							child = bone_children.pop()
 							nodes.append(bone_to_node(child))
 							skin["joints"].append(bone_id_dic[child.name])
-							bone_children.extend(child.children)
+							bone_children += [ch for ch in child.children]
+						nodes = sorted(nodes,key=lambda node: bone_id_dic[node["name"]])
 						skins.append(skin)
+						break
 
 		self.json_dic.update({"scenes":[{"nodes":scene}]})
 		self.json_dic.update({"nodes":nodes})

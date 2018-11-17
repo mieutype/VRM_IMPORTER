@@ -25,7 +25,7 @@ class Glb_obj():
 		self.texture_to_dic() 
 		self.material_to_dic()
 		self.mesh_to_bin_and_dic() 
-		self.json_dic["scene"] = [0]
+		self.json_dic["scene"] = 0
 		self.glTF_meta_to_dic()
 		self.vrm_meta_to_dic() #colliderとかmetaとか....
 		self.finalize()
@@ -205,7 +205,7 @@ class Glb_obj():
 				shape_min_max_dic = {}
 			else:
 				shape_pos_bin_dic = OrderedDict({shape.name:b"" for shape in mesh.data.shape_keys.key_blocks[1:]})#0番目Basisは省く
-				shape_min_max_dic = OrderedDict({shape.name:[[fmax,fmax,fmax],[fmin,fmin,fmin]] for shape in mesh.data.shape_keys.key_blocks})
+				shape_min_max_dic = OrderedDict({shape.name:[[fmax,fmax,fmax],[fmin,fmin,fmin]] for shape in mesh.data.shape_keys.key_blocks[1:]})
 			position_bin =b""
 			position_min_max = [[fmax,fmax,fmax],[fmin,fmin,fmin]]
 			normal_bin = b""
@@ -220,8 +220,8 @@ class Glb_obj():
 
 			def min_max(minmax,position):
 				for i in range(3):
-					minmax[0][i] = vert_location[i] if vert_location[i] < minmax[0][i] else minmax[0][i]
-					minmax[1][i] = vert_location[i] if vert_location[i] > minmax[1][i] else minmax[1][i]
+					minmax[0][i] = position[i] if position[i] < minmax[0][i] else minmax[0][i]
+					minmax[1][i] = position[i] if position[i] > minmax[1][i] else minmax[1][i]
 				return
 			for face in bm.faces:
 				#このへん絶対超遅い
@@ -232,14 +232,14 @@ class Glb_obj():
 						texcord_bins[id] += f_pair_packer(uv[0],-uv[1]) #blenderとglbのuvは上下逆
 					for shape_name in shape_pos_bin_dic.keys(): 
 						shape_layer = bm.verts.layers.shape[shape_name]
-						vert_location = self.axis_blender_to_glb( [loop.vert[shape_layer][i] - loop.vert.co[i] for i in range(3)])
-						shape_pos_bin_dic[shape_name] += f_vec3_packer(*vert_location)
-						min_max(shape_min_max_dic[shape_name],vert_location)
+						morph_pos = self.axis_blender_to_glb( [loop.vert[shape_layer][i] - loop.vert.co[i] for i in range(3)])
+						shape_pos_bin_dic[shape_name] += f_vec3_packer(*morph_pos)
+						min_max(shape_min_max_dic[shape_name],morph_pos)
 					magic = 0
 					joints = [magic,magic,magic,magic]
 					weights = [0.0, 0.0, 0.0, 0.0]
 					for v_group in mesh.data.vertices[loop.vert.index].groups:						
-							weights.pop()
+							weights.pop(3)
 							weights.insert(0,v_group.weight)
 							joints.pop(3)
 							joints.insert(0,joint_id_from_node_name_solver(
@@ -253,7 +253,7 @@ class Glb_obj():
 					normal_bin += f_vec3_packer(*self.axis_blender_to_glb(loop.vert.normal))
 					unique_vertex_id_dic[unique_vertex_id]=loop.vert.index
 					primitive_index_bin_dic[mat_id_dic[material_slot_dic[face.material_index]]] += I_scalar_packer(unique_vertex_id)
-					primitive_index_vertex_count[mat_id_dic[material_slot_dic[face.material_index]]] +=1
+					primitive_index_vertex_count[mat_id_dic[material_slot_dic[face.material_index]]] += 1
 					unique_vertex_id += 1
 				
 			#DONE :index position, uv, normal, position morph,JOINT WEIGHT  
@@ -286,10 +286,10 @@ class Glb_obj():
 				}
 				primitive["attributes"].update({"TEXCOORD_{}".format(i):uv_glb.accessor_id for i,uv_glb in enumerate(uv_glbs)})
 				if len(shape_pos_bin_dic.keys()) != 0:
-					primitive["targets"]=[{"POSITION":morph_glb.accessor_id} for morph_glb in morph_glbs]
+					primitive["targets"]=[{"POSITION":morph_glb.accessor_id,"NORMAL":morph_glb.accessor_id} for morph_glb in morph_glbs]
 					primitive["extras"] = {"targetNames":[shape_name for shape_name in shape_pos_bin_dic.keys()]} 
 				primitive_list.append(primitive)
-			self.json_dic["meshes"].append({"name":mesh.name,"primitives":primitive_list})
+			self.json_dic["meshes"].append(OrderedDict({"name":mesh.name,"primitives":primitive_list}))
 			#endregion hell
 		bpy.ops.object.mode_set(mode='OBJECT')
 			
@@ -313,7 +313,7 @@ class Glb_obj():
 		#materialProperties　は　material_to_dic()で処理する
 		vrm_extension_dic = OrderedDict()
 		vrm_extension_dic["meta"] = vrm_meta_dic = {}
-		vrm_extension_dic["humanoid"] = vrm_humanoid_dic = {}
+		vrm_extension_dic["humanoid"] = vrm_humanoid_dic = {"humanBones":[]}
 		vrm_extension_dic["firstPerson"] = vrm_FP_dic = {}
 		#vrm_extension_dic["blendShapeMaster"] = vrm_BSM_dic = {}
 		#vrm_extension_dic["secondaryAnimation"] = vrm_SA_dic = {}
@@ -340,14 +340,13 @@ class Glb_obj():
 			#endregion meta
 			#region humanbone
 				node_name_id_dic = {node["name"]:i for i, node in enumerate(self.json_dic["nodes"])}
-				vrm_humanoid_dic["humanBones"] = []
 				for bone in obj.data.bones:
-					if "humanBone" in obj.keys():
+					if "humanBone" in bone.keys():
 						vrm_humanoid_dic["humanBones"].append({ 
 							"bone": bone["humanBone"],
 							"node":node_name_id_dic[bone.name],
 							"useDefaultValues": True
-						})
+						})		
 			#endregion humanbone
 			#TODO region secondary 
 			#TODO region materialProps
@@ -362,7 +361,7 @@ class Glb_obj():
 		json_str = json.dumps(self.json_dic).encode("utf-8")
 		json_size = struct.pack("<I", len(json_str))
 		bin_size = struct.pack("<I",len(self.bin))
-		total_size = struct.pack("<I",len(json_str) + len(self.bin))
+		total_size = struct.pack("<I",len(json_str) + len(self.bin)+28) #include header
 		self.result = magic + total_size + \
 				json_size + b"JSON" + json_str + \
 				bin_size + b'BIN\x00' + self.bin

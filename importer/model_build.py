@@ -74,7 +74,7 @@ class Blend_model():
         #build bones as armature
         bpy.ops.object.add(type='ARMATURE', enter_editmode=True, location=(0,0,0))
         self.armature = bpy.context.object
-        self.armature.name = vrm_pydata.json["extensions"]["VRM"]["meta"]["title"]
+        self.armature.name = "skelton"
         self.bones = dict()
         def bone_chain(id,parent_id):
             if id == -1:#自身がrootのrootの時
@@ -87,7 +87,7 @@ class Blend_model():
                 else:
                     parent_pos = self.bones[parent_id].head
                 b.head = numpy.array(parent_pos)+numpy.array(py_bone.position)
-                #temprary tail pos(gltf doesn't have bone. there defines as joints )
+                #region temprary tail pos(gltf doesn't have bone. there defines as joints )
                 def vector_length(bone_vector):
                     return sqrt(pow(bone_vector[0],2)+pow(bone_vector[1],2)+pow(bone_vector[2],2))
                 #gltfは関節で定義されていて骨の長さとか向きとかないからまあなんかそれっぽい方向にボーンを向けて伸ばしたり縮めたり
@@ -114,8 +114,7 @@ class Blend_model():
                         mean_relate_pos[1] +=0.1
                     b.tail =[b.head[i] + mean_relate_pos[i] for i in range(3)]
 
-                        
-                #end tail pos    
+                #endregion tail pos    
                 self.bones[id] = b
                 if parent_id != -1:
                     b.parent = self.bones[parent_id]
@@ -321,6 +320,12 @@ class Blend_model():
         except Exception as e:
             print(e)
             pass
+        try:   
+            for metatag,metainfo in vrm_pydata.json["extensions"]["VRM"]["meta"].items():
+                self.armature[metatag] = metainfo
+        except Exception as e:
+            print(e)
+            pass
             
         return
 
@@ -413,7 +418,7 @@ class Blend_model():
                 offset[0] *= -1
                 
                 obj.matrix_world = self.armature.matrix_world * Matrix.Translation(offset) * self.armature.data.bones[node_name].matrix_local
-                obj.empty_draw_size = collider["radius"]  #半径*2
+                obj.empty_draw_size = collider["radius"]  
                 obj.empty_draw_type = "SPHERE"
                 bpy.context.scene.objects.link(obj)
                 empties_list.append(obj)

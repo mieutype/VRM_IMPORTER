@@ -27,7 +27,7 @@ class Glb_obj():
 		self.mesh_to_bin_and_dic() 
 		self.json_dic["scene"] = [0]
 		self.glTF_meta_to_dic()
-		#self.vrm_meta_to_dic() #colliderとかmetaとか....
+		self.vrm_meta_to_dic() #colliderとかmetaとか....
 		self.finalize()
 		return self.result
 	@staticmethod
@@ -256,6 +256,45 @@ class Glb_obj():
 
 		self.json_dic.update(glTF_meta_dic)
 		return
+
+	def vrm_meta_to_dic(self):
+		vrm_extension_dic = OrderedDict()
+		vrm_extension_dic["meta"] = vrm_meta_dic = {}
+		vrm_extension_dic["humanoid"] = vrm_humanoid_dic = {}
+		for obj in bpy.context.selected_objects:
+			if obj.type =="ARMATURE":
+				vrm_metas = [
+					"version",
+					"author",
+					"contactInformation",
+					"reference",
+					"title",
+					"allowedUserName",
+					"violentUssageName",
+					"sexualUssageName",
+					"commercialUssageName",
+					"otherPermissionUrl",
+					"licenseName",
+					"otherLicenseUrl"
+				]
+				for key in vrm_metas:
+					vrm_meta_dic[key] = obj[key] if key in obj.keys() else ""
+				vrm_meta_dic["textures"] = len(self.glb_bin_collector.image_bins)
+
+				node_name_id_dic = {node["name"]:i for i, node in enumerate(self.json_dic["nodes"])}
+				vrm_humanoid_dic["humanBones"] = []
+				for bone in obj.data.bones:
+					if "humanBone" in obj.keys():
+						vrm_humanoid_dic["humanBones"].append({ 
+							"bone": bone["humanBone"],
+							"node":node_name_id_dic[bone.name],
+							"useDefaultValues": True
+						})
+
+
+				self.json_dic.update({"extensions":{"VRM":vrm_extension_dic}})
+				break
+		#TODO add secondary animations set up and MToon
 
 	def finalize(self):
 		bin_json, self.bin = self.glb_bin_collector.pack_all()

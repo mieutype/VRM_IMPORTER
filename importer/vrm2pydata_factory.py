@@ -35,8 +35,8 @@ def material(mat,materialPropaties,textures)->VRM_Types.Material:
         return texture_index
     #拡張部分    
     #TODO　Emission_Color,shade_color等々は単純には再現不可なのでいつか
-    EXT_props_name = [x["name"] for x in materialPropaties]
     try:
+        EXT_props_name = [x["name"] for x in materialPropaties]
         prop_index = EXT_props_name.index(v_mat.name)
         mat_prop = materialPropaties[prop_index]
         if mat_prop["shader"] == "VRM/MToon":
@@ -55,6 +55,8 @@ def material(mat,materialPropaties,textures)->VRM_Types.Material:
                 v_mat.emission_texture_index = emission_id
     except ValueError : #EXT_props_name.index(v_mat.name) でﾌﾟﾛﾊﾟﾃｨがないときはこれがくる
         print("{} material is not extension".format(v_mat.name))
+    except Exception as e:
+        print(e)
     return v_mat
 
 

@@ -103,13 +103,65 @@ class Glb_obj():
 
 
 	def material_to_dic(self):
-		material_list = []
+		glb_material_list = []
+		VRM_material_props_list = []
+
+		image_id_dic = {image.name:image.image_id for image in self.glb_bin_collector.image_bins}
 		for b_mat in bpy.data.materials:
-			mat_dic = {}
-			mat_dic["name"] = b_mat.name
-			#TODO do something
-			material_list.append(mat_dic)
-		self.json_dic.update({"materials" : material_list})
+			#region pbr_mat
+			mat_dic = {"name":b_mat.name}
+			mat_dic["pbrMetallicRoughness"]= {
+                	"baseColorTexture": {
+                    "index": image_id_dic[b_mat.texture_slots[0].texture.image.name],
+                    "texCoord": 0 #TODO
+                },
+                "baseColorFactor":[*b_mat.diffuse_color,1],
+                "metallicFactor": 0,
+                "roughnessFactor": 0.9
+            }
+			glb_material_list.append(mat_dic)
+			#endregion pbr mat
+
+			#region VRM_mat
+	
+			v_mat_dic = OrderedDict()
+			v_mat_dic["name"] = b_mat.name
+			v_mat_dic["shader"] = "VRM/MToon"
+			v_mat_dic["renderQueue"] = 3000 #TODO 適切な値を
+			#TODO vector props
+			v_mat_dic["vectorProperties"] = vec_dic = OrderedDict()
+			vec_dic["_Color"] = [*b_mat.diffuse_color,1]
+			vec_dic["_ShadeColor"] = [0,0,0,1] #TODO 適切な値を
+			#TODO float props
+			v_mat_dic["floatProperties"] = float_dic = OrderedDict()
+			#region texture props
+			def texuture_prop_add(dic,tex_attr,tex_slot_id)->dict():
+				try:
+					tex_dic = {tex_attr:image_id_dic[b_mat.texture_slots[tex_slot_id].texture.image.name]}
+					dic.update(tex_dic)
+				except AttributeError as e:
+					print("{} is nothing".format(tex_attr))
+				return 
+			v_mat_dic["textureProperties"] = tex_dic = OrderedDict()
+			for slot_id,texslot in enumerate(b_mat.texture_slots):
+				if texslot == None:
+					continue
+				if texslot.use_map_color_diffuse:
+					if texslot.texture_coords == "UV":
+						texuture_prop_add(tex_dic,"_MainTex",slot_id)
+					if texslot.texture_coords == "NORMAL":
+						texuture_prop_add(tex_dic,"_SphereAdd",slot_id)
+				if texslot.use_map_normal:
+					texuture_prop_add(tex_dic,"_BumpMap",slot_id)
+				if texslot.use_map_emit:
+					texuture_prop_add(tex_dic,"_EmissionMap",slot_id)
+
+			v_mat_dic["keywordMap"] = {}
+			v_mat_dic["tagMap"] = {}
+			VRM_material_props_list.append(v_mat_dic)
+			#endregion VRM_mat
+		self.json_dic.update({"materials" : glb_material_list})
+		self.json_dic.update({"extensions":{"VRM":{"materialProperties":VRM_material_props_list}}})
 		return
 
 	def mesh_to_bin_and_dic(self):
@@ -149,10 +201,10 @@ class Glb_obj():
 			primitive_index_bin_dic = OrderedDict({mat_id_dic[mat.name]:b"" for mat in mesh.material_slots})
 			primitive_index_vertex_count = OrderedDict({mat_id_dic[mat.name]:0 for mat in mesh.material_slots})
 			if mesh.data.shape_keys is None : 
-				shape_bin_dic = {}
+				shape_pos_bin_dic = {}
 				shape_min_max_dic = {}
 			else:
-				shape_bin_dic = OrderedDict({shape.name:b"" for shape in mesh.data.shape_keys.key_blocks[1:]})#0番目Basisは省く
+				shape_pos_bin_dic = OrderedDict({shape.name:b"" for shape in mesh.data.shape_keys.key_blocks[1:]})#0番目Basisは省く
 				shape_min_max_dic = OrderedDict({shape.name:[[fmax,fmax,fmax],[fmin,fmin,fmin]] for shape in mesh.data.shape_keys.key_blocks})
 			position_bin =b""
 			position_min_max = [[fmax,fmax,fmax],[fmin,fmin,fmin]]
@@ -178,10 +230,10 @@ class Glb_obj():
 						uv_layer = bm.loops.layers.uv[uvlayer_name]
 						uv = loop[uv_layer].uv
 						texcord_bins[id] += f_pair_packer(uv[0],-uv[1]) #blenderとglbのuvは上下逆
-					for shape_name in shape_bin_dic.keys(): 
+					for shape_name in shape_pos_bin_dic.keys(): 
 						shape_layer = bm.verts.layers.shape[shape_name]
 						vert_location = self.axis_blender_to_glb( [loop.vert[shape_layer][i] - loop.vert.co[i] for i in range(3)])
-						shape_bin_dic[shape_name] += f_vec3_packer(*vert_location)
+						shape_pos_bin_dic[shape_name] += f_vec3_packer(*vert_location)
 						min_max(shape_min_max_dic[shape_name],vert_location)
 					magic = 0
 					joints = [magic,magic,magic,magic]
@@ -205,7 +257,7 @@ class Glb_obj():
 					unique_vertex_id += 1
 				
 			#DONE :index position, uv, normal, position morph,JOINT WEIGHT  
-			#TODO morph_normal, color...?
+			#TODO morph_normal, v_color...?
 			primitive_glbs_dic = OrderedDict({
 				mat_id:Glb_bin(index_bin,"SCALAR",GL_CONSTANS.UNSIGNED_INT,primitive_index_vertex_count[mat_id],None,self.glb_bin_collector)
 				for mat_id,index_bin in primitive_index_bin_dic.items() if index_bin !=b""
@@ -217,9 +269,9 @@ class Glb_obj():
 					for texcood_bin in texcord_bins.values()]
 			joints_glb = Glb_bin(joints_bin,"VEC4",GL_CONSTANS.UNSIGNED_SHORT,unique_vertex_id,None,self.glb_bin_collector)
 			weights_glb = Glb_bin(weights_bin,"VEC4",GL_CONSTANS.FLOAT,unique_vertex_id,None,self.glb_bin_collector)
-			if len(shape_bin_dic.keys()) != 0:
+			if len(shape_pos_bin_dic.keys()) != 0:
 				morph_glbs = [Glb_bin(morph_pos_bin,"VEC3",GL_CONSTANS.FLOAT,unique_vertex_id,morph_minmax,self.glb_bin_collector) 
-						for morph_pos_bin,morph_minmax in zip(shape_bin_dic.values(),shape_min_max_dic.values())
+						for morph_pos_bin,morph_minmax in zip(shape_pos_bin_dic.values(),shape_min_max_dic.values())
 						]
 			primitive_list = []
 			for primitive_id,index_glb in primitive_glbs_dic.items():
@@ -233,9 +285,9 @@ class Glb_obj():
 					"WEIGHTS_0":weights_glb.accessor_id
 				}
 				primitive["attributes"].update({"TEXCOORD_{}".format(i):uv_glb.accessor_id for i,uv_glb in enumerate(uv_glbs)})
-				if len(shape_bin_dic.keys()) != 0:
+				if len(shape_pos_bin_dic.keys()) != 0:
 					primitive["targets"]=[{"POSITION":morph_glb.accessor_id} for morph_glb in morph_glbs]
-					primitive["extras"] = {"targetNames":[shape_name for shape_name in shape_bin_dic.keys()]} 
+					primitive["extras"] = {"targetNames":[shape_name for shape_name in shape_pos_bin_dic.keys()]} 
 				primitive_list.append(primitive)
 			self.json_dic["meshes"].append({"name":mesh.name,"primitives":primitive_list})
 			#endregion hell
@@ -258,10 +310,15 @@ class Glb_obj():
 		return
 
 	def vrm_meta_to_dic(self):
+		#materialProperties　は　material_to_dic()で処理する
 		vrm_extension_dic = OrderedDict()
 		vrm_extension_dic["meta"] = vrm_meta_dic = {}
 		vrm_extension_dic["humanoid"] = vrm_humanoid_dic = {}
+		vrm_extension_dic["firstPerson"] = vrm_FP_dic = {}
+		#vrm_extension_dic["blendShapeMaster"] = vrm_BSM_dic = {}
+		#vrm_extension_dic["secondaryAnimation"] = vrm_SA_dic = {}
 		for obj in bpy.context.selected_objects:
+			#region meta
 			if obj.type =="ARMATURE":
 				vrm_metas = [
 					"version",
@@ -280,7 +337,8 @@ class Glb_obj():
 				for key in vrm_metas:
 					vrm_meta_dic[key] = obj[key] if key in obj.keys() else ""
 				vrm_meta_dic["textures"] = len(self.glb_bin_collector.image_bins)
-
+			#endregion meta
+			#region humanbone
 				node_name_id_dic = {node["name"]:i for i, node in enumerate(self.json_dic["nodes"])}
 				vrm_humanoid_dic["humanBones"] = []
 				for bone in obj.data.bones:
@@ -290,9 +348,10 @@ class Glb_obj():
 							"node":node_name_id_dic[bone.name],
 							"useDefaultValues": True
 						})
-
-
-				self.json_dic.update({"extensions":{"VRM":vrm_extension_dic}})
+			#endregion humanbone
+			#TODO region secondary 
+			#TODO region materialProps
+				self.json_dic["extensions"]["VRM"].update(vrm_extension_dic)
 				break
 		#TODO add secondary animations set up and MToon
 

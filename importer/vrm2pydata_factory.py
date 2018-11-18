@@ -26,6 +26,13 @@ def material(mat,materialPropaties,textures)->VRM_Types.Material:
             v_mat.roughnessFactor = pbrmat["roughnessFactor"]
     if "doubleSided" in mat:
         v_mat.doubleSided = mat["doubleSided"]
+    if "alphaMode" in mat:
+        if mat["alphaMode"] == "MASK":
+            v_mat.alpha_mode = "MASK"
+        if mat["alphaMode"] == "BLEND":
+            v_mat.alpha_mode = "Z_TRANSPARENCY"
+        if mat["alphaMode"] == "OPAQUE":
+            v_mat.alpha_mode = "OPAQUE"
 
 
     def get_texture_index(matprop,attr):

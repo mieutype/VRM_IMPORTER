@@ -138,8 +138,16 @@ class Blend_model():
             b_mat = bpy.data.materials.new(mat.name)
             b_mat.use_shadeless = True
             b_mat.diffuse_color = mat.base_color[0:3]
-            b_mat.use_transparency = True
-            b_mat.alpha = 1
+            if mat.alphaMode == "OPAQUE":
+                b_mat.use_transparency = False
+            elif mat.alphaMode == "Z_TRANSPARENCY":
+                b_mat.use_transparency = True
+                b_mat.alpha = 1
+                b_mat.transparency_method = "Z_TRANSPARENCY"
+            elif mat.alphaMode == "MASK":
+                b_mat.use_transparency = True
+                b_mat.alpha = 1
+                b_mat.transparency_method = "MASK"
             def texture_add(tex_index,texture_param_dict,slot_param_dict):
                 ts = b_mat.texture_slots.add()
                 ts.texture = tex_index

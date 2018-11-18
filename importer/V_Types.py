@@ -64,6 +64,7 @@ class Material(object):
         self.normal_texcoord_index = None
         self.displace_texture_index = None
         self.displace_texcoord_index = None
+        self.alpha_mode = "Z_TRANSPARENCY"
         self.doubleSided = True
 
 if "__main__" == __name__:

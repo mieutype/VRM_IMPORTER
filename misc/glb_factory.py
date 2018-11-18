@@ -115,10 +115,17 @@ class Glb_obj():
                     "index": image_id_dic[b_mat.texture_slots[0].texture.image.name],
                     "texCoord": 0 #TODO
                 },
-                "baseColorFactor":[*b_mat.diffuse_color,1],
+                "baseColorFactor":[*b_mat.diffuse_color,1.0],
                 "metallicFactor": 0,
                 "roughnessFactor": 0.9
             }
+
+			if not b_mat.use_transparency:
+				mat_dic["alphaMode"] = "OPAQUE"
+			elif b_mat.transparency_method == "MASK":
+				mat_dic["alphaMode"] = "MASK"
+			else:# Z_TRANSPARENCY or RAYTRACE
+				mat_dic["alphaMode"] = "BLEND"
 			glb_material_list.append(mat_dic)
 			#endregion pbr mat
 
@@ -127,13 +134,48 @@ class Glb_obj():
 			v_mat_dic = OrderedDict()
 			v_mat_dic["name"] = b_mat.name
 			v_mat_dic["shader"] = "VRM/MToon"
-			v_mat_dic["renderQueue"] = 3000 #TODO 適切な値を
+			v_mat_dic["keywordMap"] = keyword_map = {}
+			v_mat_dic["tagMap"] = tag_map = {}
 			#TODO vector props
 			v_mat_dic["vectorProperties"] = vec_dic = OrderedDict()
 			vec_dic["_Color"] = [*b_mat.diffuse_color,1]
-			vec_dic["_ShadeColor"] = [0,0,0,1] #TODO 適切な値を
+			vec_dic["_ShadeColor"] = [0.1,0.1,0.3,1.0] #TODO 適切な値を
 			#TODO float props
 			v_mat_dic["floatProperties"] = float_dic = OrderedDict()
+			# _BlendMode : 0:Opacue 1:Cutout 2:Transparent 3:TransparentZwrite,
+			# _Src,_Dst(ry): CONST
+			# _ZWrite: 1: true 0:false
+			if not b_mat.use_transparency:
+				float_dic["_BlendMode"] = 0
+				float_dic["_SrcBlend"] = 1
+				float_dic["_DstBlend"] = 0
+				float_dic["_ZWrite"] = 1
+				keyword_map.update({"_ALPHATEST_ON": False})
+				v_mat_dic["renderQueue"] = -1
+				tag_map["RenderType"] = "Opaque"
+			elif b_mat.transparency_method == "MASK":
+				float_dic["_BlendMode"] = 1
+				float_dic["_SrcBlend"] = 1
+				float_dic["_DstBlend"] = 0
+				float_dic["_ZWrite"] = 1
+				keyword_map.update({"_ALPHATEST_ON": True})
+				v_mat_dic["renderQueue"] = 2450
+				tag_map["RenderType"] = "TransparentCutout"
+			else :#Z_TRANPARENCY or Raytrace
+				float_dic["_BlendMode"] = 2
+				float_dic["_SrcBlend"] = 5
+				float_dic["_DstBlend"] = 10
+				float_dic["_ZWrite"] = 0
+				keyword_map.update({"_ALPHATEST_ON": True})
+				v_mat_dic["renderQueue"] = 3000
+				tag_map["RenderType"] = "Transparent"
+			keyword_map.update({"_ALPHABLEND_ON": b_mat.use_transparency})
+			keyword_map.update({"_ALPHAPREMULTIPLY_ON":False})
+			
+			float_dic["_CullMode"] = 2 #backface cull
+			float_dic["_OutlineCullMode"] = 1 #front face cull (for invert normal outline)
+			keyword_map.update({"MTOON_DEBUG_NORMAL":False})
+			keyword_map.update({"MTOON_DEBUG_LITSHADERATE":False})
 			#region texture props
 			def texuture_prop_add(dic,tex_attr,tex_slot_id)->dict():
 				try:
@@ -143,6 +185,7 @@ class Glb_obj():
 					print("{} is nothing".format(tex_attr))
 				return 
 			v_mat_dic["textureProperties"] = tex_dic = OrderedDict()
+			MTOON_NORMALMAP = False
 			for slot_id,texslot in enumerate(b_mat.texture_slots):
 				if texslot == None:
 					continue
@@ -153,11 +196,12 @@ class Glb_obj():
 						texuture_prop_add(tex_dic,"_SphereAdd",slot_id)
 				if texslot.use_map_normal:
 					texuture_prop_add(tex_dic,"_BumpMap",slot_id)
+					MTOON_NORMALMAP = True
 				if texslot.use_map_emit:
 					texuture_prop_add(tex_dic,"_EmissionMap",slot_id)
 
-			v_mat_dic["keywordMap"] = {}
-			v_mat_dic["tagMap"] = {}
+			keyword_Map.update({"_NORMALMAP": MTOON_NORMALMAP})
+
 			VRM_material_props_list.append(v_mat_dic)
 			#endregion VRM_mat
 		self.json_dic.update({"materials" : glb_material_list})
@@ -202,9 +246,11 @@ class Glb_obj():
 			primitive_index_vertex_count = OrderedDict({mat_id_dic[mat.name]:0 for mat in mesh.material_slots})
 			if mesh.data.shape_keys is None : 
 				shape_pos_bin_dic = {}
+				shape_normal_bin_dic = {}
 				shape_min_max_dic = {}
 			else:
 				shape_pos_bin_dic = OrderedDict({shape.name:b"" for shape in mesh.data.shape_keys.key_blocks[1:]})#0番目Basisは省く
+				shape_normal_bin_dic = OrderedDict({shape.name:b"" for shape in mesh.data.shape_keys.key_blocks[1:]})
 				shape_min_max_dic = OrderedDict({shape.name:[[fmax,fmax,fmax],[fmin,fmin,fmin]] for shape in mesh.data.shape_keys.key_blocks[1:]})
 			position_bin =b""
 			position_min_max = [[fmax,fmax,fmax],[fmin,fmin,fmin]]
@@ -234,6 +280,7 @@ class Glb_obj():
 						shape_layer = bm.verts.layers.shape[shape_name]
 						morph_pos = self.axis_blender_to_glb( [loop.vert[shape_layer][i] - loop.vert.co[i] for i in range(3)])
 						shape_pos_bin_dic[shape_name] += f_vec3_packer(*morph_pos)
+						shape_normal_bin_dic[shape_name] +=f_vec3_packer(*[0.0,0.0,0.0]) #FIXME ちゃんとした値を入れる
 						min_max(shape_min_max_dic[shape_name],morph_pos)
 					magic = 0
 					joints = [magic,magic,magic,magic]
@@ -270,9 +317,12 @@ class Glb_obj():
 			joints_glb = Glb_bin(joints_bin,"VEC4",GL_CONSTANS.UNSIGNED_SHORT,unique_vertex_id,None,self.glb_bin_collector)
 			weights_glb = Glb_bin(weights_bin,"VEC4",GL_CONSTANS.FLOAT,unique_vertex_id,None,self.glb_bin_collector)
 			if len(shape_pos_bin_dic.keys()) != 0:
-				morph_glbs = [Glb_bin(morph_pos_bin,"VEC3",GL_CONSTANS.FLOAT,unique_vertex_id,morph_minmax,self.glb_bin_collector) 
+				morph_pos_glbs = [Glb_bin(morph_pos_bin,"VEC3",GL_CONSTANS.FLOAT,unique_vertex_id,morph_minmax,self.glb_bin_collector) 
 						for morph_pos_bin,morph_minmax in zip(shape_pos_bin_dic.values(),shape_min_max_dic.values())
 						]
+				morph_normal_glbs = [Glb_bin(morph_normal_bin,"VEC3",GL_CONSTANS.FLOAT,unique_vertex_id,None,self.glb_bin_collector) 
+						for morph_normal_bin in shape_normal_bin_dic.values()
+						] 
 			primitive_list = []
 			for primitive_id,index_glb in primitive_glbs_dic.items():
 				primitive = OrderedDict({"mode":4})
@@ -286,7 +336,7 @@ class Glb_obj():
 				}
 				primitive["attributes"].update({"TEXCOORD_{}".format(i):uv_glb.accessor_id for i,uv_glb in enumerate(uv_glbs)})
 				if len(shape_pos_bin_dic.keys()) != 0:
-					primitive["targets"]=[{"POSITION":morph_glb.accessor_id,"NORMAL":morph_glb.accessor_id} for morph_glb in morph_glbs]
+					primitive["targets"]=[{"POSITION":morph_pos_glb.accessor_id,"NORMAL":morph_normal_glb.accessor_id} for morph_pos_glb,morph_normal_glb in zip(morph_pos_glbs,morph_normal_glbs)]
 					primitive["extras"] = {"targetNames":[shape_name for shape_name in shape_pos_bin_dic.keys()]} 
 				primitive_list.append(primitive)
 			self.json_dic["meshes"].append(OrderedDict({"name":mesh.name,"primitives":primitive_list}))
@@ -348,11 +398,11 @@ class Glb_obj():
 							"useDefaultValues": True
 						})		
 			#endregion humanbone
-			#TODO region secondary 
-			#TODO region materialProps
-				self.json_dic["extensions"]["VRM"].update(vrm_extension_dic)
 				break
-		#TODO add secondary animations set up and MToon
+		self.json_dic["extensions"]["VRM"].update(vrm_extension_dic)
+		#TODO region secondary 
+
+		#TODO add secondary animations set up 
 
 	def finalize(self):
 		bin_json, self.bin = self.glb_bin_collector.pack_all()
@@ -361,7 +411,7 @@ class Glb_obj():
 		json_str = json.dumps(self.json_dic).encode("utf-8")
 		json_size = struct.pack("<I", len(json_str))
 		bin_size = struct.pack("<I",len(self.bin))
-		total_size = struct.pack("<I",len(json_str) + len(self.bin)+28) #include header
+		total_size = struct.pack("<I",len(json_str) + len(self.bin)+28) #include header size
 		self.result = magic + total_size + \
 				json_size + b"JSON" + json_str + \
 				bin_size + b'BIN\x00' + self.bin

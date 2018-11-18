@@ -11,7 +11,6 @@ import json
 import struct
 from sys import float_info
 import bpy,bmesh
-
 class Glb_obj():
 	def __init__(self):
 		self.json_dic = OrderedDict()
@@ -20,8 +19,8 @@ class Glb_obj():
 		self.result = None
 	def convert_bpy2glb(self):
 		#TODO
-		self.armature_to_node_and_scenes_dic() #親のないboneは1つだけ as root_bone
 		self.image_to_bin()
+		self.armature_to_node_and_scenes_dic() #親のないboneは1つだけ as root_bone
 		self.texture_to_dic() 
 		self.material_to_dic()
 		self.mesh_to_bin_and_dic() 
@@ -34,12 +33,23 @@ class Glb_obj():
 	def axis_blender_to_glb(vec3):
 		return [vec3[i]*t for i,t in zip([0,2,1],[-1,1,1])]
 
+	def image_to_bin(self):
+		for image in bpy.data.images:
+			with open(image.filepath_from_user(),"rb") as f:
+				image_bin = f.read()
+			name = image.name
+			filetype = "image/"+image.file_format.lower()
+			Image_bin(image_bin,name,filetype,self.glb_bin_collector)
+		return
+
 	def armature_to_node_and_scenes_dic(self):
 		nodes = []
 		scene = []
 		skins = []
+		armature_obj = None
 		for obj_id,obj in enumerate(bpy.context.selected_objects):
 			if obj.type =="ARMATURE":
+				armature_obj = obj
 				bone_id_dic = {b.name : bone_id for bone_id,b in enumerate(obj.data.bones)}
 				def bone_to_node(b_bone):
 					parent_head_local = b_bone.parent.head_local if b_bone.parent is not None else [0,0,0]
@@ -70,19 +80,27 @@ class Glb_obj():
 						skins.append(skin)
 						break
 
+		skin_invert_matrix_bin = b""
+		f_4x4_packer = struct.Struct("<16f").pack
+		for node_id in skins[0]["joints"]:
+			bone_name = nodes[node_id]["name"]
+			bone_glb_world_pos = self.axis_blender_to_glb(armature_obj.data.bones[bone_name].head_local)
+			inv_matrix = [
+				1,0,0,0,
+				0,1,0,0,
+				0,0,1,0,
+				-bone_glb_world_pos[0],-bone_glb_world_pos[1],-bone_glb_world_pos[2],1
+			]
+			skin_invert_matrix_bin += f_4x4_packer(*inv_matrix)
+
+		IM_bin = Glb_bin(skin_invert_matrix_bin,"MAT4",GL_CONSTANS.FLOAT,len(skins[0]["joints"]),None,self.glb_bin_collector)
+		skins[0]["inverseBindMatrices"] = IM_bin.accessor_id
 		self.json_dic.update({"scenes":[{"nodes":scene}]})
 		self.json_dic.update({"nodes":nodes})
 		self.json_dic.update({"skins":skins})
 		return 
 
-	def image_to_bin(self):
-		for image in bpy.data.images:
-			with open(image.filepath_from_user(),"rb") as f:
-				image_bin = f.read()
-			name = image.name
-			filetype = "image/"+image.file_format.lower()
-			Image_bin(image_bin,name,filetype,self.glb_bin_collector)
-		return
+
 
 	def texture_to_dic(self):
 		self.json_dic["samplers"] = [{
@@ -138,7 +156,7 @@ class Glb_obj():
 			v_mat_dic["tagMap"] = tag_map = {}
 			#TODO vector props
 			v_mat_dic["vectorProperties"] = vec_dic = OrderedDict()
-			vec_dic["_Color"] = [*b_mat.diffuse_color,1]
+			vec_dic["_Color"] = [*b_mat.diffuse_color,1.0]
 			vec_dic["_ShadeColor"] = [0.1,0.1,0.3,1.0] #TODO 適切な値を
 			#TODO float props
 			v_mat_dic["floatProperties"] = float_dic = OrderedDict()
@@ -161,18 +179,18 @@ class Glb_obj():
 				keyword_map.update({"_ALPHATEST_ON": True})
 				v_mat_dic["renderQueue"] = 2450
 				tag_map["RenderType"] = "TransparentCutout"
-			else :#Z_TRANPARENCY or Raytrace
-				float_dic["_BlendMode"] = 2
+			else :#transparent and Z_TRANPARENCY or Raytrace 
+				float_dic["_BlendMode"] = 3
 				float_dic["_SrcBlend"] = 5
 				float_dic["_DstBlend"] = 10
-				float_dic["_ZWrite"] = 0
+				float_dic["_ZWrite"] = 1
 				keyword_map.update({"_ALPHATEST_ON": True})
 				v_mat_dic["renderQueue"] = 3000
 				tag_map["RenderType"] = "Transparent"
 			keyword_map.update({"_ALPHABLEND_ON": b_mat.use_transparency})
 			keyword_map.update({"_ALPHAPREMULTIPLY_ON":False})
 			
-			float_dic["_CullMode"] = 2 #backface cull
+			float_dic["_CullMode"] = 0 #backface cull
 			float_dic["_OutlineCullMode"] = 1 #front face cull (for invert normal outline)
 			keyword_map.update({"MTOON_DEBUG_NORMAL":False})
 			keyword_map.update({"MTOON_DEBUG_LITSHADERATE":False})
@@ -200,7 +218,7 @@ class Glb_obj():
 				if texslot.use_map_emit:
 					texuture_prop_add(tex_dic,"_EmissionMap",slot_id)
 
-			keyword_Map.update({"_NORMALMAP": MTOON_NORMALMAP})
+			keyword_map.update({"_NORMALMAP": MTOON_NORMALMAP})
 
 			VRM_material_props_list.append(v_mat_dic)
 			#endregion VRM_mat
@@ -345,8 +363,6 @@ class Glb_obj():
 			
 		return
 
-
-
 	def glTF_meta_to_dic(self):
 		glTF_meta_dic = {
 			"extensionsUsed":["VRM"],
@@ -400,8 +416,15 @@ class Glb_obj():
 			#endregion humanbone
 				break
 		self.json_dic["extensions"]["VRM"].update(vrm_extension_dic)
-		#TODO region secondary 
 
+		#TODO region secondary 
+		self.json_dic["nodes"].append({
+			"name":"secondary",
+			"translation":[0.0,0.0,0.0],
+			"rotation":[0.0,0.0,0.0,1.0],
+			"scale":[1.0,1.0,1.0]
+		})
+		self.json_dic["scenes"][0]["nodes"].append(len(self.json_dic["nodes"])-1)
 		#TODO add secondary animations set up 
 
 	def finalize(self):

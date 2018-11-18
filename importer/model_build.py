@@ -138,13 +138,13 @@ class Blend_model():
             b_mat = bpy.data.materials.new(mat.name)
             b_mat.use_shadeless = True
             b_mat.diffuse_color = mat.base_color[0:3]
-            if mat.alphaMode == "OPAQUE":
+            if mat.alpha_mode == "OPAQUE":
                 b_mat.use_transparency = False
-            elif mat.alphaMode == "Z_TRANSPARENCY":
+            elif mat.alpha_mode == "Z_TRANSPARENCY":
                 b_mat.use_transparency = True
                 b_mat.alpha = 1
                 b_mat.transparency_method = "Z_TRANSPARENCY"
-            elif mat.alphaMode == "MASK":
+            elif mat.alpha_mode == "MASK":
                 b_mat.use_transparency = True
                 b_mat.alpha = 1
                 b_mat.transparency_method = "MASK"

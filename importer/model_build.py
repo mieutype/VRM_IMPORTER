@@ -344,7 +344,7 @@ class Blend_model():
         model_name = vrm_ext_dic["meta"]["title"]
         textblock = bpy.data.texts.new("{}_raw.json".format(model_name))
         textblock.write(json.dumps(vrm_pydata.json,indent = 4))
-        """
+        
         #region blendshape_master
         blendShapeGroups_list = copy.deepcopy(vrm_ext_dic["blendShapeMaster"]["blendShapeGroups"])
         #meshをidから名前に
@@ -358,6 +358,7 @@ class Blend_model():
 
         blendshape_block = bpy.data.texts.new("{}_blend_shape_group.json".format(model_name))
         blendshape_block.write(json.dumps(blendShapeGroups_list,indent = 4))
+        self.armature["blendshape_json"] = blendshape_block.name
         #endregion blendshape_master
 
         #region springbone
@@ -370,11 +371,9 @@ class Blend_model():
             bone_group["colliderGroups"] = [vrm_pydata.json["nodes"][colliderGroups_list[collider_gp_id]["node"]]["name"] for collider_gp_id in bone_group["colliderGroups"]]
         spring_bonegroup_block = bpy.data.texts.new("{}_secondary_root_bones.json".format(model_name))
         spring_bonegroup_block.write(json.dumps(spring_bonegroup_list,indent = 4))
+        self.armature["spring_bone_json"] = spring_bonegroup_block.name
         #endregion springbone
 
-        self.armature["blendshape_json"] = blendshape_block.name
-        self.armature["spring_bone_json"] = spring_bonegroup_block.name
-        """
         return
 
     def cleaning_data(self):
@@ -457,7 +456,7 @@ class Blend_model():
                 obj.parent = self.armature
                 obj.parent_type = "BONE"
                 obj.parent_bone = node_name
-                offset = list(collider["offset"].values()) #values直接はindexｱｸｾｽ出来ないのでしゃあなし
+                offset = [collider["offset"]["x"],collider["offset"]["y"],collider["offset"]["z"]] #values直接はindexｱｸｾｽ出来ないのでしゃあなし
                 offset = [offset[axis]*inv for axis,inv in zip([0,2,1],[-1,1,1])]
                 
                 obj.matrix_world = self.armature.matrix_world * Matrix.Translation(offset) * self.armature.data.bones[node_name].matrix_local

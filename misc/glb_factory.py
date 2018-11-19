@@ -33,6 +33,10 @@ class Glb_obj():
 	def axis_blender_to_glb(vec3):
 		return [vec3[i]*t for i,t in zip([0,2,1],[-1,1,1])]
 
+	@staticmethod
+	def textblock2str(textblock):
+		return "".join([line.body for line in textblock.lines])
+
 	def image_to_bin(self):
 		for image in bpy.data.images:
 			with open(image.filepath_from_user(),"rb") as f:
@@ -383,47 +387,100 @@ class Glb_obj():
 
 	def vrm_meta_to_dic(self):
 		#materialProperties　は　material_to_dic()で処理する
+		#region vrm_extension
 		vrm_extension_dic = OrderedDict()
-		vrm_extension_dic["meta"] = vrm_meta_dic = {}
-		vrm_extension_dic["humanoid"] = vrm_humanoid_dic = {"humanBones":[]}
-		vrm_extension_dic["firstPerson"] = vrm_FP_dic = {}
-		#vrm_extension_dic["blendShapeMaster"] = vrm_BSM_dic = {}
-		#vrm_extension_dic["secondaryAnimation"] = vrm_SA_dic = {}
-		for obj in bpy.context.selected_objects:
-			#region meta
-			if obj.type =="ARMATURE":
-				vrm_metas = [
-					"version",
-					"author",
-					"contactInformation",
-					"reference",
-					"title",
-					"allowedUserName",
-					"violentUssageName",
-					"sexualUssageName",
-					"commercialUssageName",
-					"otherPermissionUrl",
-					"licenseName",
-					"otherLicenseUrl"
-				]
-				for key in vrm_metas:
-					vrm_meta_dic[key] = obj[key] if key in obj.keys() else ""
-				vrm_meta_dic["textures"] = len(self.glb_bin_collector.image_bins)
-			#endregion meta
-			#region humanbone
-				node_name_id_dic = {node["name"]:i for i, node in enumerate(self.json_dic["nodes"])}
-				for bone in obj.data.bones:
-					if "humanBone" in bone.keys():
-						vrm_humanoid_dic["humanBones"].append({ 
-							"bone": bone["humanBone"],
-							"node":node_name_id_dic[bone.name],
-							"useDefaultValues": True
-						})		
-			#endregion humanbone
-				break
-		self.json_dic["extensions"]["VRM"].update(vrm_extension_dic)
+		#
+		#
 
-		#TODO region secondary 
+		#region meta
+		vrm_extension_dic["meta"] = vrm_meta_dic = {}
+		vrm_metas = [
+			"version",
+			"author",
+			"contactInformation",
+			"reference",
+			"title",
+			"allowedUserName",
+			"violentUssageName",
+			"sexualUssageName",
+			"commercialUssageName",
+			"otherPermissionUrl",
+			"licenseName",
+			"otherLicenseUrl"
+		]
+		for key in vrm_metas:
+			vrm_meta_dic[key] = self.armature[key] if key in self.armature.keys() else ""
+		vrm_meta_dic["textures"] = len(self.glb_bin_collector.image_bins)
+		#endregion meta
+		#region humanbone
+		vrm_extension_dic["humanoid"] = vrm_humanoid_dic = {"humanBones":[]}
+		node_name_id_dic = {node["name"]:i for i, node in enumerate(self.json_dic["nodes"])}
+		for bone in self.armature.data.bones:
+			if "humanBone" in bone.keys():
+				vrm_humanoid_dic["humanBones"].append({ 
+					"bone": bone["humanBone"],
+					"node":node_name_id_dic[bone.name],
+					"useDefaultValues": True
+				})		
+		#endregion humanbone
+		vrm_extension_dic["firstPerson"] = vrm_FP_dic = {}
+
+		#region blendShapeMaster
+		vrm_extension_dic["blendShapeMaster"] = vrm_BSM_dic = {}
+		BSM_list = json.loads(self.textblock2str(bpy.data.texts[self.armature["blendshape_json"]]))
+		#meshを名前からid
+        #weightを0-1から0-100に
+        #shape_indexを名前からindexに
+		for bsm in BSM_list:
+			for bind in bsm["binds"]:
+				bind["mesh"] = [i for i,mesh in enumerate(self.json_dic["meshes"]) if mesh["name"]==bind["mesh"]][0]
+				bind["index"] = self.json_dic["meshes"][bind["mesh"]]["primitives"][0]["extras"]["targetNames"].index(bind["index"])
+				bind["weight"] = bind["weight"]*100
+		vrm_BSM_dic["blendShapeGroups"] = BSM_list
+		#endregion blendShapeMaster
+
+		node_name_id_dic = {node["name"]:i for i,node in enumerate(self.json_dic["nodes"])}
+		#region secondaryAnimation
+		vrm_extension_dic["secondaryAnimation"] = {"boneGroups":[],"colliderGroups":[]}
+
+		#region colliderGroups
+		#TODO colliderGroups
+		#armatureの子emptyを変換する
+		collider_group_list = []
+		empty_dic = {node_name_id_dic[ch.parent_bone]:[] for ch in self.armature.children if ch.type == "EMPTY"}
+		for childEmpty in [ch for ch in self.armature.children if ch.type == "EMPTY"]:
+			empty_dic[node_name_id_dic[childEmpty.parent_bone]].append(childEmpty)
+		for node_id,empty_objs in empty_dic.items():
+			collider_group = {"node":node_id,"colliders":[]}
+			colliders = collider_group["colliders"]
+			for empty in empty_objs:
+				collider = {"radius":empty.empty_draw_size}
+				empty_offset_pos = [empty.matrix_world.to_translation()[i] \
+									- self.armature.location[i] \
+									- self.armature.data.bones[empty.parent_bone].head_local[i] \
+									for i in range(3)]
+				collider["offset"] = OrderedDict({axis:o_s for axis,o_s in zip(("x","y","z"),self.axis_blender_to_glb(empty_offset_pos)) })
+				colliders.append(collider)
+			collider_group_list.append(collider_group)
+
+		vrm_extension_dic["secondaryAnimation"]["colliderGroups"] = collider_group_list
+		#endrigon colliderGroups
+
+		#region boneGroup
+		#ﾎﾞｰﾝ名からnode_idに
+        #collider_groupも名前からcolliderGroupのindexに直す
+		collider_node_id_list = [c_g["node"] for c_g in collider_group_list]
+		BG_list = json.loads(self.textblock2str(bpy.data.texts[self.armature["spring_bone_json"]]))
+		for bone_group in BG_list:
+			bone_group["bones"] = [node_name_id_dic[name] for name in bone_group["bones"] ]
+			bone_group["colliderGroups"] = [collider_node_id_list.index(node_name_id_dic[name]) for name in bone_group["colliderGroups"] ]
+		vrm_extension_dic["secondaryAnimation"]["boneGroups"]= BG_list
+		#endregion boneGroup
+		#endregion secondaryAnimation
+		self.json_dic["extensions"]["VRM"].update(vrm_extension_dic)
+		#endregion vrm_extension
+		
+		#region secondary 
 		self.json_dic["nodes"].append({
 			"name":"secondary",
 			"translation":[0.0,0.0,0.0],
@@ -431,7 +488,6 @@ class Glb_obj():
 			"scale":[1.0,1.0,1.0]
 		})
 		self.json_dic["scenes"][0]["nodes"].append(len(self.json_dic["nodes"])-1)
-		#TODO add secondary animations set up 
 
 	def finalize(self):
 		bin_json, self.bin = self.glb_bin_collector.pack_all()

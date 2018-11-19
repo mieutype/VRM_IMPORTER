@@ -27,20 +27,16 @@ with open(read_path, "rb") as f:
         exit()
 
 #something do in below with loaded_json
-search_list = ["Hairs",
-                "J_Bip_C_Head",
-                "J_Bip_C_Neck",
-                "J_Bip_C_UpperChest",
-                "J_Bip_C_Chest",
-                "J_Bip_C_Spine",
-                "J_Bip_C_Hips",
-                "Position",
-                "Global",
-                ]
-import numpy
-sum = numpy.array([0.0,0.0,0.0])
-for id,node in enumerate(loaded_json["nodes"]):
-    if node["name"] in search_list:
-        print("{} id:{} is {}".format(node["name"],id,node["translation"]))
-        sum += numpy.array(node["translation"])
-print("{:.5f}, {:.5f}, {:.5f}".format(sum[0],sum[1],sum[2]))
+
+#with open(read_path+".json","wt")as f:
+#   f.write(json.dumps(loaded_json,indent=4))
+#for scene in loaded_json["scenes"]:
+mat = loaded_json["extensions"]["VRM"]["materialProperties"]
+prim = loaded_json["meshes"]
+#print("{},{},{},{}".format(*[acc[i]["count"]for i in [26,29,31,17]]))
+for i,matprop in enumerate(mat):
+    print("{}:{}".format(i,matprop["name"]))
+for mesh in prim:
+    for p in mesh["primitives"]:
+        print("matID: {}".format(p["material"]))
+

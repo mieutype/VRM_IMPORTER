@@ -26,6 +26,13 @@ def material(mat,materialPropaties,textures)->VRM_Types.Material:
             v_mat.roughnessFactor = pbrmat["roughnessFactor"]
     if "doubleSided" in mat:
         v_mat.doubleSided = mat["doubleSided"]
+    if "alphaMode" in mat:
+        if mat["alphaMode"] == "MASK":
+            v_mat.alpha_mode = "MASK"
+        if mat["alphaMode"] == "BLEND":
+            v_mat.alpha_mode = "Z_TRANSPARENCY"
+        if mat["alphaMode"] == "OPAQUE":
+            v_mat.alpha_mode = "OPAQUE"
 
 
     def get_texture_index(matprop,attr):
@@ -35,26 +42,26 @@ def material(mat,materialPropaties,textures)->VRM_Types.Material:
         return texture_index
     #拡張部分    
     #TODO　Emission_Color,shade_color等々は単純には再現不可なのでいつか
-    EXT_props_name = [x["name"] for x in materialPropaties]
     try:
-        prop_index = EXT_props_name.index(v_mat.name)
-        mat_prop = materialPropaties[prop_index]
-        if mat_prop["shader"] == "VRM/MToon":
+
+        if ext_mat["shader"] == "VRM/MToon":
             v_mat.shader_name = "VRM/MToon"
-            if "_Color" in mat_prop:
-                v_mat.base_color = mat_prop["_Color"]
-            v_mat.color_texture_index = get_texture_index(mat_prop,"_MainTex")
-            v_mat.normal_texture_index = get_texture_index(mat_prop,"_BumpMap")
+            if "_Color" in ext_mat:
+                v_mat.base_color = ext_mat["_Color"]
+            v_mat.color_texture_index = get_texture_index(ext_mat,"_MainTex")
+            v_mat.normal_texture_index = get_texture_index(ext_mat,"_BumpMap")
             v_mat.normal_texcoord_index = 0
             #拡張テクスチャ
-            sphere_id = get_texture_index(mat_prop,"_SphereAdd")
+            sphere_id = get_texture_index(ext_mat,"_SphereAdd")
             if sphere_id is not None:
                 v_mat.sphere_texture_index = sphere_id
-            emission_id = get_texture_index(mat_prop,"_EmissionMap")
+            emission_id = get_texture_index(ext_mat,"_EmissionMap")
             if emission_id is not None:
                 v_mat.emission_texture_index = emission_id
     except ValueError : #EXT_props_name.index(v_mat.name) でﾌﾟﾛﾊﾟﾃｨがないときはこれがくる
         print("{} material is not extension".format(v_mat.name))
+    except Exception as e:
+        print(e)
     return v_mat
 
 

@@ -5,7 +5,7 @@ https://opensource.org/licenses/mit-license.php
 
 """
 
-from .vrm_load import vrm_load.parse_glb
+from ..importer.vrm_load import parse_glb
 import os
 import json
 from .binaly_loader import Binaly_Reader
@@ -22,7 +22,7 @@ def exsitOrMakedir(path):
 
 model_path = filedialog.askopenfilename(filetypes=[("", "*vrm")])
 with open(model_path,"rb") as f:
-    vrm_json,bin = vrm_load.parse_glb(f.read())
+    vrm_json,bin = parse_glb(f.read())
 if messagebox.askyesno(message = "write VRM.json?"):
     writedir = exsitOrMakedir(model_path)
     writejsonpath = os.path.join(writedir,"vrm.json")

@@ -77,8 +77,7 @@ def read_vrm(model_path):
     #オリジナルライセンスに対する注意
         if vrm_pydata.json["extensions"]["VRM"]["meta"]["licenseName"] == "Other":
             print("Is this VRM allowed to Edit? CHECK IT LICENSE")
-    
-    
+
     texture_rip(vrm_pydata,body_binary)
 
     vrm_pydata.decoded_binary = decode_bin(vrm_pydata.json,body_binary)
@@ -213,14 +212,15 @@ def material_read(vrm_pydata):
         print(e)
     if "textures" in vrm_pydata.json:
         textures = vrm_pydata.json["textures"]
-    for mat in vrm_pydata.json["materials"]:
-        vrm_pydata.materials.append(vrm2pydata_factory.material(mat,VRM_EXTENSION_material_promaties,textures))
+    for mat,ext_mat in zip(vrm_pydata.json["materials"],VRM_EXTENSION_material_promaties):
+        vrm_pydata.materials.append(vrm2pydata_factory.material(mat,ext_mat,textures))
 
 
 
     #skinをパース　->バイナリの中身はskining実装の横着用
     #skinのjointsの(nodesの)indexをvertsのjoints_0は指定してる
     #inverseBindMatrices: 単にｽｷﾆﾝｸﾞするときの逆行列。読み込み不要なのでしない(自前計算もできる、めんどいけど)
+    #ついでに[i][3]ではなく、[3][i]にマイナスx,y,zが入っている。　ここで詰まった。
     #joints:JOINTS_0の指定node番号のindex
 def skin_read(vrm_pydata):
     for skin in vrm_pydata.json["skins"]:
@@ -228,6 +228,7 @@ def skin_read(vrm_pydata):
         if "skeleton" in skin.keys():
             vrm_pydata.skins_root_node_list.append(skin["skeleton"])
 
+            
     #node(ボーン)をﾊﾟｰｽする->親からの相対位置で記録されている
 def node_read(vrm_pydata):
     for i,node in enumerate(vrm_pydata.json["nodes"]):

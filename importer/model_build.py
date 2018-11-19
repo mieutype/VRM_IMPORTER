@@ -11,7 +11,7 @@ from mathutils import Vector,Matrix
 from . import V_Types as VRM_Types
 from math import sqrt,pow
 import numpy
-import json
+import json,copy
 
 
 class Blend_model():
@@ -22,7 +22,6 @@ class Blend_model():
         self.material_dict = None
         self.primitive_obj_dict = None
         self.mesh_joined_objects = None
-        self.spring_bones = None
         self.vrm_model_build(vrm_pydata,is_put_spring_bone_info)
 
 
@@ -74,7 +73,7 @@ class Blend_model():
         #build bones as armature
         bpy.ops.object.add(type='ARMATURE', enter_editmode=True, location=(0,0,0))
         self.armature = bpy.context.object
-        self.armature.name = vrm_pydata.json["extensions"]["VRM"]["meta"]["title"]
+        self.armature.name = "skelton"
         self.bones = dict()
         def bone_chain(id,parent_id):
             if id == -1:#自身がrootのrootの時
@@ -87,7 +86,7 @@ class Blend_model():
                 else:
                     parent_pos = self.bones[parent_id].head
                 b.head = numpy.array(parent_pos)+numpy.array(py_bone.position)
-                #temprary tail pos(gltf doesn't have bone. there defines as joints )
+                #region temprary tail pos(gltf doesn't have bone. there defines as joints )
                 def vector_length(bone_vector):
                     return sqrt(pow(bone_vector[0],2)+pow(bone_vector[1],2)+pow(bone_vector[2],2))
                 #gltfは関節で定義されていて骨の長さとか向きとかないからまあなんかそれっぽい方向にボーンを向けて伸ばしたり縮めたり
@@ -114,8 +113,7 @@ class Blend_model():
                         mean_relate_pos[1] +=0.1
                     b.tail =[b.head[i] + mean_relate_pos[i] for i in range(3)]
 
-                        
-                #end tail pos    
+                #endregion tail pos    
                 self.bones[id] = b
                 if parent_id != -1:
                     b.parent = self.bones[parent_id]
@@ -139,8 +137,16 @@ class Blend_model():
             b_mat = bpy.data.materials.new(mat.name)
             b_mat.use_shadeless = True
             b_mat.diffuse_color = mat.base_color[0:3]
-            b_mat.use_transparency = True
-            b_mat.alpha = 1
+            if mat.alpha_mode == "OPAQUE":
+                b_mat.use_transparency = False
+            elif mat.alpha_mode == "Z_TRANSPARENCY":
+                b_mat.use_transparency = True
+                b_mat.alpha = 1
+                b_mat.transparency_method = "Z_TRANSPARENCY"
+            elif mat.alpha_mode == "MASK":
+                b_mat.use_transparency = True
+                b_mat.alpha = 1
+                b_mat.transparency_method = "MASK"
             def texture_add(tex_index,texture_param_dict,slot_param_dict):
                 ts = b_mat.texture_slots.add()
                 ts.texture = tex_index
@@ -148,6 +154,7 @@ class Blend_model():
                     setattr(ts.texture,attr,param)
                 for attr,param in slot_param_dict.items():
                     setattr(ts,attr,param)
+                return
             if mat.color_texture_index is not None:
                 texture_param_dict = {}
                 slot_param_dict = {
@@ -188,6 +195,8 @@ class Blend_model():
                     }
                 texture_add(self.textures[mat.emission_texture_index],texture_param_dict,slot_param_dict)
             self.material_dict[index] = b_mat
+        for mat in self.material_dict.values():
+            print(mat.name)
         return 
 
     def make_primitive_mesh_objects(self, vrm_pydata):
@@ -321,12 +330,51 @@ class Blend_model():
         except Exception as e:
             print(e)
             pass
+        try:   
+            for metatag,metainfo in vrm_pydata.json["extensions"]["VRM"]["meta"].items():
+                self.armature[metatag] = metainfo
+        except Exception as e:
+            print(e)
+            pass
             
         return
 
     def json_dump(self, vrm_pydata):
-        textblock = bpy.data.texts.new("{}.json".format(vrm_pydata.json["extensions"]["VRM"]["meta"]["title"]))
+        vrm_ext_dic = vrm_pydata.json["extensions"]["VRM"]
+        model_name = vrm_ext_dic["meta"]["title"]
+        textblock = bpy.data.texts.new("{}_raw.json".format(model_name))
         textblock.write(json.dumps(vrm_pydata.json,indent = 4))
+        
+        #region blendshape_master
+        blendShapeGroups_list = copy.deepcopy(vrm_ext_dic["blendShapeMaster"]["blendShapeGroups"])
+        #meshをidから名前に
+        #weightを0-100から0-1に
+        #shape_indexを名前に
+        for bsg in blendShapeGroups_list:
+            for bind_dic in bsg["binds"]:
+                bind_dic["index"] = vrm_pydata.json["meshes"][bind_dic["mesh"]]["primitives"][0]["extras"]["targetNames"][bind_dic["index"]]
+                bind_dic["mesh"] = self.primitive_obj_dict[bind_dic["mesh"]][0].name
+                bind_dic["weight"] = bind_dic["weight"] / 100
+
+        blendshape_block = bpy.data.texts.new("{}_blend_shape_group.json".format(model_name))
+        blendshape_block.write(json.dumps(blendShapeGroups_list,indent = 4))
+        self.armature["blendshape_json"] = blendshape_block.name
+        #endregion blendshape_master
+
+        #region springbone
+        spring_bonegroup_list =copy.deepcopy(vrm_ext_dic["secondaryAnimation"]["boneGroups"])
+        colliderGroups_list = vrm_ext_dic["secondaryAnimation"]["colliderGroups"]
+        #node_idを管理するのは面倒なので、名前に置き換える
+        #collider_groupも同じく
+        for bone_group in spring_bonegroup_list:
+            bone_group["bones"] = [ vrm_pydata.json["nodes"][node_id]["name"] for node_id in bone_group["bones"]]
+            bone_group["colliderGroups"] = [vrm_pydata.json["nodes"][colliderGroups_list[collider_gp_id]["node"]]["name"] for collider_gp_id in bone_group["colliderGroups"]]
+        spring_bonegroup_block = bpy.data.texts.new("{}_secondary_root_bones.json".format(model_name))
+        spring_bonegroup_block.write(json.dumps(spring_bonegroup_list,indent = 4))
+        self.armature["spring_bone_json"] = spring_bonegroup_block.name
+        #endregion springbone
+
+        return
 
     def cleaning_data(self):
         #cleaning
@@ -353,6 +401,8 @@ class Blend_model():
                 obj.select = True
             bpy.ops.object.join()
             bpy.ops.object.select_all(action="DESELECT")
+            for unused_mesh in [obj.data for obj in objs[1:]]:
+                bpy.data.meshes.remove(unused_mesh)
             self.mesh_joined_objects.append(bpy.context.active_object)
         return
 
@@ -384,7 +434,7 @@ class Blend_model():
 
         if not "secondaryAnimation" in vrm_pydata.json["extensions"]["VRM"]:
             print("no secondary animation object")
-            return empties_list
+            return 
         secondaryAnimation_json = vrm_pydata.json["extensions"]["VRM"]["secondaryAnimation"]
         spring_rootbone_groups_json = secondaryAnimation_json["boneGroups"]
         collider_groups_json = secondaryAnimation_json["colliderGroups"]
@@ -397,7 +447,6 @@ class Blend_model():
                         continue
                     bone[key] = val
                     
-        empties_list = []
         for collider_group in collider_groups_json:
             collider_base_node = nodes_json[collider_group["node"]]
             node_name = collider_base_node["name"]
@@ -407,15 +456,12 @@ class Blend_model():
                 obj.parent = self.armature
                 obj.parent_type = "BONE"
                 obj.parent_bone = node_name
-                offset = [0]*3
-                for val, pos in zip(collider["offset"].values(), [0, 2, 1]):
-                    offset[pos] = val
-                offset[0] *= -1
+                offset = [collider["offset"]["x"],collider["offset"]["y"],collider["offset"]["z"]] #values直接はindexｱｸｾｽ出来ないのでしゃあなし
+                offset = [offset[axis]*inv for axis,inv in zip([0,2,1],[-1,1,1])]
                 
                 obj.matrix_world = self.armature.matrix_world * Matrix.Translation(offset) * self.armature.data.bones[node_name].matrix_local
-                obj.empty_draw_size = collider["radius"]  #半径*2
+                obj.empty_draw_size = collider["radius"]  
                 obj.empty_draw_type = "SPHERE"
                 bpy.context.scene.objects.link(obj)
-                empties_list.append(obj)
                 
-        return empties_list
+        return 

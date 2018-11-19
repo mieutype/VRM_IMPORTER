@@ -342,12 +342,23 @@ class Blend_model():
     def json_dump(self, vrm_pydata):
         vrm_ext_dic = vrm_pydata.json["extensions"]["VRM"]
         model_name = vrm_ext_dic["meta"]["title"]
-        textblock = bpy.data.texts.new("{}.json".format(model_name))
+        textblock = bpy.data.texts.new("{}_raw.json".format(model_name))
         textblock.write(json.dumps(vrm_pydata.json,indent = 4))
         
+        #region blendshape_master
+        blendShapeGroups_list = copy.deepcopy(vrm_ext_dic["blendShapeMaster"]["blendShapeGroups"])
+        for bsg in blendShapeGroups_list:
+            for bind_dic in bsg["binds"]:
+                bind_dic["index"] = vrm_pydata.json["meshes"][bind_dic["mesh"]]["primitives"][0]["extras"]["targetNames"][bind_dic["index"]]
+                bind_dic["mesh"] = self.primitive_obj_dict[bind_dic["mesh"]][0].name
+                bind_dic["weight"] =bind_dic["weight"] / 100
+
         blendshape_block = bpy.data.texts.new("{}_blend_shape_group.json".format(model_name))
-        blendshape_block.write(json.dumps(vrm_ext_dic["blendShapeMaster"]["blendShapeGroups"],indent = 4))
+        blendshape_block.write(json.dumps(blendShapeGroups_list,indent = 4))
         
+
+        #endregion
+        #region springbone
         spring_bonegroup_list =copy.deepcopy(vrm_ext_dic["secondaryAnimation"]["boneGroups"])
         colliderGroups_list = vrm_ext_dic["secondaryAnimation"]["colliderGroups"]
         #node_idを管理するのは面倒なので、名前に置き換える
@@ -355,9 +366,9 @@ class Blend_model():
         for bone_group in spring_bonegroup_list:
             bone_group["bones"] = [ vrm_pydata.json["nodes"][node_id]["name"] for node_id in bone_group["bones"]]
             bone_group["colliderGroups"] = [vrm_pydata.json["nodes"][colliderGroups_list[collider_gp_id]["node"]]["name"] for collider_gp_id in bone_group["colliderGroups"]]
-        spring_bonegroup_block = bpy.data.texts.new("{}_secondary__root_bones.json".format(model_name))
+        spring_bonegroup_block = bpy.data.texts.new("{}_secondary_root_bones.json".format(model_name))
         spring_bonegroup_block.write(json.dumps(spring_bonegroup_list,indent = 4))
-
+        #endregion
         self.armature["blendshape_json"] = blendshape_block.name
         self.armature["spring_bone_json"] = spring_bonegroup_block.name
         return
@@ -387,6 +398,8 @@ class Blend_model():
                 obj.select = True
             bpy.ops.object.join()
             bpy.ops.object.select_all(action="DESELECT")
+            for unused_mesh in [obj.data for obj in objs[1:]]:
+                bpy.data.meshes.remove(unused_mesh)
             self.mesh_joined_objects.append(bpy.context.active_object)
         return
 
@@ -431,7 +444,6 @@ class Blend_model():
                         continue
                     bone[key] = val
                     
-        empties_list = []
         for collider_group in collider_groups_json:
             collider_base_node = nodes_json[collider_group["node"]]
             node_name = collider_base_node["name"]
@@ -441,15 +453,12 @@ class Blend_model():
                 obj.parent = self.armature
                 obj.parent_type = "BONE"
                 obj.parent_bone = node_name
-                offset = [0]*3
-                for val, pos in zip(collider["offset"].values(), [0, 2, 1]):
-                    offset[pos] = val
-                offset[0] *= -1
+                offset = list(collider["offset"].values()) #values直接はindexｱｸｾｽ出来ないのでしゃあなし
+                offset = [offset[axis]*inv for axis,inv in zip([0,2,1],[-1,1,1])]
                 
                 obj.matrix_world = self.armature.matrix_world * Matrix.Translation(offset) * self.armature.data.bones[node_name].matrix_local
                 obj.empty_draw_size = collider["radius"]  
                 obj.empty_draw_type = "SPHERE"
                 bpy.context.scene.objects.link(obj)
-                empties_list.append(obj)
                 
-        return empties_list
+        return 

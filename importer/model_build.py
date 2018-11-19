@@ -347,17 +347,19 @@ class Blend_model():
         
         #region blendshape_master
         blendShapeGroups_list = copy.deepcopy(vrm_ext_dic["blendShapeMaster"]["blendShapeGroups"])
+        #meshをidから名前に
+        #weightを0-100から0-1に
+        #shape_indexを名前に
         for bsg in blendShapeGroups_list:
             for bind_dic in bsg["binds"]:
                 bind_dic["index"] = vrm_pydata.json["meshes"][bind_dic["mesh"]]["primitives"][0]["extras"]["targetNames"][bind_dic["index"]]
                 bind_dic["mesh"] = self.primitive_obj_dict[bind_dic["mesh"]][0].name
-                bind_dic["weight"] =bind_dic["weight"] / 100
+                bind_dic["weight"] = bind_dic["weight"] / 100
 
         blendshape_block = bpy.data.texts.new("{}_blend_shape_group.json".format(model_name))
         blendshape_block.write(json.dumps(blendShapeGroups_list,indent = 4))
-        
+        #endregion blendshape_master
 
-        #endregion
         #region springbone
         spring_bonegroup_list =copy.deepcopy(vrm_ext_dic["secondaryAnimation"]["boneGroups"])
         colliderGroups_list = vrm_ext_dic["secondaryAnimation"]["colliderGroups"]
@@ -368,7 +370,8 @@ class Blend_model():
             bone_group["colliderGroups"] = [vrm_pydata.json["nodes"][colliderGroups_list[collider_gp_id]["node"]]["name"] for collider_gp_id in bone_group["colliderGroups"]]
         spring_bonegroup_block = bpy.data.texts.new("{}_secondary_root_bones.json".format(model_name))
         spring_bonegroup_block.write(json.dumps(spring_bonegroup_list,indent = 4))
-        #endregion
+        #endregion springbone
+
         self.armature["blendshape_json"] = blendshape_block.name
         self.armature["spring_bone_json"] = spring_bonegroup_block.name
         return

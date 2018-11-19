@@ -27,6 +27,16 @@ with open(read_path, "rb") as f:
         exit()
 
 #something do in below with loaded_json
-for scene in loaded_json["scenes"]:
-    for node in scene["nodes"]:
-        print(loaded_json["nodes"][node]["name"])
+
+#with open(read_path+".json","wt")as f:
+#   f.write(json.dumps(loaded_json,indent=4))
+#for scene in loaded_json["scenes"]:
+mat = loaded_json["extensions"]["VRM"]["materialProperties"]
+prim = loaded_json["meshes"]
+#print("{},{},{},{}".format(*[acc[i]["count"]for i in [26,29,31,17]]))
+for i,matprop in enumerate(mat):
+    print("{}:{}".format(i,matprop["name"]))
+for mesh in prim:
+    for p in mesh["primitives"]:
+        print("matID: {}".format(p["material"]))
+

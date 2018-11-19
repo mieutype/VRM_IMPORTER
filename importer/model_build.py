@@ -11,7 +11,7 @@ from mathutils import Vector,Matrix
 from . import V_Types as VRM_Types
 from math import sqrt,pow
 import numpy
-import json
+import json,copy
 
 
 class Blend_model():
@@ -22,7 +22,6 @@ class Blend_model():
         self.material_dict = None
         self.primitive_obj_dict = None
         self.mesh_joined_objects = None
-        self.spring_bones = None
         self.vrm_model_build(vrm_pydata,is_put_spring_bone_info)
 
 
@@ -155,6 +154,7 @@ class Blend_model():
                     setattr(ts.texture,attr,param)
                 for attr,param in slot_param_dict.items():
                     setattr(ts,attr,param)
+                return
             if mat.color_texture_index is not None:
                 texture_param_dict = {}
                 slot_param_dict = {
@@ -195,6 +195,8 @@ class Blend_model():
                     }
                 texture_add(self.textures[mat.emission_texture_index],texture_param_dict,slot_param_dict)
             self.material_dict[index] = b_mat
+        for mat in self.material_dict.values():
+            print(mat.name)
         return 
 
     def make_primitive_mesh_objects(self, vrm_pydata):
@@ -338,8 +340,27 @@ class Blend_model():
         return
 
     def json_dump(self, vrm_pydata):
-        textblock = bpy.data.texts.new("{}.json".format(vrm_pydata.json["extensions"]["VRM"]["meta"]["title"]))
+        vrm_ext_dic = vrm_pydata.json["extensions"]["VRM"]
+        model_name = vrm_ext_dic["meta"]["title"]
+        textblock = bpy.data.texts.new("{}.json".format(model_name))
         textblock.write(json.dumps(vrm_pydata.json,indent = 4))
+        
+        blendshape_block = bpy.data.texts.new("{}_blend_shape_group.json".format(model_name))
+        blendshape_block.write(json.dumps(vrm_ext_dic["blendShapeMaster"]["blendShapeGroups"],indent = 4))
+        
+        spring_bonegroup_list =copy.deepcopy(vrm_ext_dic["secondaryAnimation"]["boneGroups"])
+        colliderGroups_list = vrm_ext_dic["secondaryAnimation"]["colliderGroups"]
+        #node_idを管理するのは面倒なので、名前に置き換える
+        #collider_groupも同じく
+        for bone_group in spring_bonegroup_list:
+            bone_group["bones"] = [ vrm_pydata.json["nodes"][node_id]["name"] for node_id in bone_group["bones"]]
+            bone_group["colliderGroups"] = [vrm_pydata.json["nodes"][colliderGroups_list[collider_gp_id]["node"]]["name"] for collider_gp_id in bone_group["colliderGroups"]]
+        spring_bonegroup_block = bpy.data.texts.new("{}_secondary__root_bones.json".format(model_name))
+        spring_bonegroup_block.write(json.dumps(spring_bonegroup_list,indent = 4))
+
+        self.armature["blendshape_json"] = blendshape_block.name
+        self.armature["spring_bone_json"] = spring_bonegroup_block.name
+        return
 
     def cleaning_data(self):
         #cleaning

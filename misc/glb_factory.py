@@ -16,9 +16,9 @@ class Glb_obj():
 		self.json_dic = OrderedDict()
 		self.bin = b""
 		self.glb_bin_collector = Glb_bin_collection()
+		self.armature = [obj for obj in bpy.context.selected_objects if obj.type == "ARMATURE"][0]
 		self.result = None
 	def convert_bpy2glb(self):
-		#TODO
 		self.image_to_bin()
 		self.armature_to_node_and_scenes_dic() #親のないboneは1つだけ as root_bone
 		self.texture_to_dic() 
@@ -46,45 +46,42 @@ class Glb_obj():
 		nodes = []
 		scene = []
 		skins = []
-		armature_obj = None
-		for obj_id,obj in enumerate(bpy.context.selected_objects):
-			if obj.type =="ARMATURE":
-				armature_obj = obj
-				bone_id_dic = {b.name : bone_id for bone_id,b in enumerate(obj.data.bones)}
-				def bone_to_node(b_bone):
-					parent_head_local = b_bone.parent.head_local if b_bone.parent is not None else [0,0,0]
-					node = OrderedDict({
-						"name":b_bone.name,
-						"translation":self.axis_blender_to_glb([b_bone.head_local[i] - parent_head_local[i] for i in range(3)]),
-						"rotation":[0,0,0,1],
-						"scale":[1,1,1],
-						"children":[bone_id_dic[ch.name] for ch in b_bone.children]
-					})
-					if len(node["children"]) == 0:
-						node.pop("children")
-					return node
-				for bone in obj.data.bones:
-					if bone.parent is None: #root bone
-						root_bone_id = bone_id_dic[bone.name]
-						skin = {"joints":[root_bone_id]}
-						skin["skeleton"] = root_bone_id
-						scene.append(root_bone_id)
-						nodes.append(bone_to_node(bone))
-						bone_children = [b for b in bone.children]
-						while bone_children :
-							child = bone_children.pop()
-							nodes.append(bone_to_node(child))
-							skin["joints"].append(bone_id_dic[child.name])
-							bone_children += [ch for ch in child.children]
-						nodes = sorted(nodes,key=lambda node: bone_id_dic[node["name"]])
-						skins.append(skin)
-						break
+
+		bone_id_dic = {b.name : bone_id for bone_id,b in enumerate(self.armature.data.bones)}
+		def bone_to_node(b_bone):
+			parent_head_local = b_bone.parent.head_local if b_bone.parent is not None else [0,0,0]
+			node = OrderedDict({
+				"name":b_bone.name,
+				"translation":self.axis_blender_to_glb([b_bone.head_local[i] - parent_head_local[i] for i in range(3)]),
+				"rotation":[0,0,0,1],
+				"scale":[1,1,1],
+				"children":[bone_id_dic[ch.name] for ch in b_bone.children]
+			})
+			if len(node["children"]) == 0:
+				del node["children"]
+			return node
+		for bone in obj.data.bones:
+			if bone.parent is None: #root bone
+				root_bone_id = bone_id_dic[bone.name]
+				skin = {"joints":[root_bone_id]}
+				skin["skeleton"] = root_bone_id
+				scene.append(root_bone_id)
+				nodes.append(bone_to_node(bone))
+				bone_children = [b for b in bone.children]
+				while bone_children :
+					child = bone_children.pop()
+					nodes.append(bone_to_node(child))
+					skin["joints"].append(bone_id_dic[child.name])
+					bone_children += [ch for ch in child.children]
+				nodes = sorted(nodes,key=lambda node: bone_id_dic[node["name"]])
+				skins.append(skin)
+					
 
 		skin_invert_matrix_bin = b""
 		f_4x4_packer = struct.Struct("<16f").pack
 		for node_id in skins[0]["joints"]:
 			bone_name = nodes[node_id]["name"]
-			bone_glb_world_pos = self.axis_blender_to_glb(armature_obj.data.bones[bone_name].head_local)
+			bone_glb_world_pos = self.axis_blender_to_glb(self.armature.data.bones[bone_name].head_local)
 			inv_matrix = [
 				1,0,0,0,
 				0,1,0,0,
@@ -99,8 +96,6 @@ class Glb_obj():
 		self.json_dic.update({"nodes":nodes})
 		self.json_dic.update({"skins":skins})
 		return 
-
-
 
 	def texture_to_dic(self):
 		self.json_dic["samplers"] = [{
@@ -118,7 +113,6 @@ class Glb_obj():
 			textures.append(texture)
 		self.json_dic.update({"textures":textures})
 		return
-
 
 	def material_to_dic(self):
 		glb_material_list = []
@@ -157,7 +151,7 @@ class Glb_obj():
 			#TODO vector props
 			v_mat_dic["vectorProperties"] = vec_dic = OrderedDict()
 			vec_dic["_Color"] = [*b_mat.diffuse_color,1.0]
-			vec_dic["_ShadeColor"] = [0.1,0.1,0.3,1.0] #TODO 適切な値を
+			vec_dic["_ShadeColor"] = [0.3,0.3,0.5,1.0] #TODO 適切な値を
 			#TODO float props
 			v_mat_dic["floatProperties"] = float_dic = OrderedDict()
 			# _BlendMode : 0:Opacue 1:Cutout 2:Transparent 3:TransparentZwrite,
@@ -190,7 +184,7 @@ class Glb_obj():
 			keyword_map.update({"_ALPHABLEND_ON": b_mat.use_transparency})
 			keyword_map.update({"_ALPHAPREMULTIPLY_ON":False})
 			
-			float_dic["_CullMode"] = 0 #backface cull
+			float_dic["_CullMode"] = 0 #no cull
 			float_dic["_OutlineCullMode"] = 1 #front face cull (for invert normal outline)
 			keyword_map.update({"MTOON_DEBUG_NORMAL":False})
 			keyword_map.update({"MTOON_DEBUG_LITSHADERATE":False})

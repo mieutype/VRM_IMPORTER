@@ -126,15 +126,17 @@ class Glb_obj():
 		for b_mat in bpy.data.materials:
 			#region pbr_mat
 			mat_dic = {"name":b_mat.name}
+			
 			mat_dic["pbrMetallicRoughness"]= {
-                	"baseColorTexture": {
-                    "index": image_id_dic[b_mat.texture_slots[0].texture.image.name],
-                    "texCoord": 0 #TODO
-                },
                 "baseColorFactor":[*b_mat.diffuse_color,1.0],
                 "metallicFactor": 0,
                 "roughnessFactor": 0.9
             }
+			if b_mat.texture_slots[0] is not None :
+				mat_dic.update({"baseColorTexture": {
+						"index": image_id_dic[b_mat.texture_slots[0].texture.image.name],
+						"texCoord": 0 #TODO
+					}})
 
 			if not b_mat.use_transparency:
 				mat_dic["alphaMode"] = "OPAQUE"

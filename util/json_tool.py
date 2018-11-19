@@ -28,8 +28,8 @@ with open(read_path, "rb") as f:
 
 #something do in below with loaded_json
 
-#with open(read_path+".json","wt")as f:
-#   f.write(json.dumps(loaded_json,indent=4))
+with open(read_path+".json","wt")as f:
+   f.write(json.dumps(loaded_json,indent=4))
 #for scene in loaded_json["scenes"]:
 mat = loaded_json["extensions"]["VRM"]["materialProperties"]
 prim = loaded_json["meshes"]

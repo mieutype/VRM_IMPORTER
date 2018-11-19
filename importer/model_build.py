@@ -344,7 +344,7 @@ class Blend_model():
         model_name = vrm_ext_dic["meta"]["title"]
         textblock = bpy.data.texts.new("{}_raw.json".format(model_name))
         textblock.write(json.dumps(vrm_pydata.json,indent = 4))
-        
+        """
         #region blendshape_master
         blendShapeGroups_list = copy.deepcopy(vrm_ext_dic["blendShapeMaster"]["blendShapeGroups"])
         #meshをidから名前に
@@ -374,6 +374,7 @@ class Blend_model():
 
         self.armature["blendshape_json"] = blendshape_block.name
         self.armature["spring_bone_json"] = spring_bonegroup_block.name
+        """
         return
 
     def cleaning_data(self):
@@ -434,7 +435,7 @@ class Blend_model():
 
         if not "secondaryAnimation" in vrm_pydata.json["extensions"]["VRM"]:
             print("no secondary animation object")
-            return empties_list
+            return 
         secondaryAnimation_json = vrm_pydata.json["extensions"]["VRM"]["secondaryAnimation"]
         spring_rootbone_groups_json = secondaryAnimation_json["boneGroups"]
         collider_groups_json = secondaryAnimation_json["colliderGroups"]

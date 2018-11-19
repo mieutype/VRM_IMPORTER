@@ -60,7 +60,7 @@ class Glb_obj():
 			if len(node["children"]) == 0:
 				del node["children"]
 			return node
-		for bone in obj.data.bones:
+		for bone in self.armature.data.bones:
 			if bone.parent is None: #root bone
 				root_bone_id = bone_id_dic[bone.name]
 				skin = {"joints":[root_bone_id]}
@@ -252,6 +252,7 @@ class Glb_obj():
 			fmin,fmax = float_info.min,float_info.max
 			unique_vertex_id = 0
 			unique_vertex_id_dic = {} #loop verts id : base vertex id (uv違いを同じ頂点番号で管理されているので)
+			unique_vertex_dic = {} # {(uv...,vertex_index):unique_vertex_id} (uvと頂点番号が同じ頂点は同じものとして省くようにする)
 			uvlayers_dic = {i:uvlayer.name for i,uvlayer in enumerate(mesh.data.uv_layers)}
 			#endregion  tempolary_used
 			primitive_index_bin_dic = OrderedDict({mat_id_dic[mat.name]:b"" for mat in mesh.material_slots})
@@ -284,6 +285,17 @@ class Glb_obj():
 			for face in bm.faces:
 				#このへん絶対超遅い
 				for loop in face.loops:
+					uv_list = []
+					for uvlayer_name in uvlayers_dic.values():
+						uv_layer = bm.loops.layers.uv[uvlayer_name]
+						uv_list += [loop[uv_layer].uv[0],loop[uv_layer].uv[1]]
+					cached_vert = unique_vertex_dic.get((*uv_list,loop.vert.index)) #keyがなければNoneを返す
+					if cached_vert is not None:
+						primitive_index_bin_dic[mat_id_dic[material_slot_dic[face.material_index]]] += I_scalar_packer(cached_vert)
+						primitive_index_vertex_count[mat_id_dic[material_slot_dic[face.material_index]]] += 1
+						continue
+					else: 
+						unique_vertex_dic[(*uv_list,loop.vert.index)] = unique_vertex_id
 					for id,uvlayer_name in uvlayers_dic.items():
 						uv_layer = bm.loops.layers.uv[uvlayer_name]
 						uv = loop[uv_layer].uv

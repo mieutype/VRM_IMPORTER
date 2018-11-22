@@ -414,7 +414,7 @@ class Glb_obj():
 			vrm_meta_dic[key] = self.armature[key] if key in self.armature.keys() else ""
 		vrm_meta_dic["textures"] = len(self.glb_bin_collector.image_bins)
 		#endregion meta
-		#region humanbone
+		#region humanoid
 		vrm_extension_dic["humanoid"] = vrm_humanoid_dic = {"humanBones":[]}
 		node_name_id_dic = {node["name"]:i for i, node in enumerate(self.json_dic["nodes"])}
 		for bone in self.armature.data.bones:
@@ -423,13 +423,14 @@ class Glb_obj():
 					"bone": bone["humanBone"],
 					"node":node_name_id_dic[bone.name],
 					"useDefaultValues": True
-				})		
-		#endregion humanbone
+				})
+		vrm_humanoid_dic.update(json.loads(self.textblock2str(bpy.data.texts[self.armature["humanoid_params"]])))
+		#endregion humanoid
 		vrm_extension_dic["firstPerson"] = vrm_FP_dic = {}
 
 		#region blendShapeMaster
 		vrm_extension_dic["blendShapeMaster"] = vrm_BSM_dic = {}
-		BSM_list = json.loads(self.textblock2str(bpy.data.texts[self.armature["blendshape_json"]]))
+		BSM_list = json.loads(self.textblock2str(bpy.data.texts[self.armature["blendshape_group"]]))
 		#meshを名前からid
         #weightを0-1から0-100に
         #shape_indexを名前からindexに
@@ -472,7 +473,7 @@ class Glb_obj():
 		#ﾎﾞｰﾝ名からnode_idに
         #collider_groupも名前からcolliderGroupのindexに直す
 		collider_node_id_list = [c_g["node"] for c_g in collider_group_list]
-		BG_list = json.loads(self.textblock2str(bpy.data.texts[self.armature["spring_bone_json"]]))
+		BG_list = json.loads(self.textblock2str(bpy.data.texts[self.armature["spring_bone"]]))
 		for bone_group in BG_list:
 			bone_group["bones"] = [node_name_id_dic[name] for name in bone_group["bones"] ]
 			bone_group["colliderGroups"] = [collider_node_id_list.index(node_name_id_dic[name]) for name in bone_group["colliderGroups"] ]

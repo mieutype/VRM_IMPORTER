@@ -344,7 +344,23 @@ class Blend_model():
         model_name = vrm_ext_dic["meta"]["title"]
         textblock = bpy.data.texts.new("{}_raw.json".format(model_name))
         textblock.write(json.dumps(vrm_pydata.json,indent = 4))
+
+
+        def write_textblock_and_assgin_to_armature(block_name,value):
+            text_block = bpy.data.texts.new("{}_{}.json".format(model_name,block_name))
+            text_block.write(json.dumps(value,indent = 4))
+            self.armature["{}".format(block_name)] = text_block.name
         
+        #region humanoid_parameter
+        humanoid_params = copy.deepcopy(vrm_ext_dic["humanoid"])
+        del humanoid_params["humanBones"]
+        write_textblock_and_assgin_to_armature("humanoid_params",humanoid_params)
+        #endregion humanoid_parameter
+        #region first_person
+        #TODO blendshape & bone controlle
+        
+        #endregion first_person
+
         #region blendshape_master
         blendShapeGroups_list = copy.deepcopy(vrm_ext_dic["blendShapeMaster"]["blendShapeGroups"])
         #meshをidから名前に
@@ -355,10 +371,7 @@ class Blend_model():
                 bind_dic["index"] = vrm_pydata.json["meshes"][bind_dic["mesh"]]["primitives"][0]["extras"]["targetNames"][bind_dic["index"]]
                 bind_dic["mesh"] = self.primitive_obj_dict[bind_dic["mesh"]][0].name
                 bind_dic["weight"] = bind_dic["weight"] / 100
-
-        blendshape_block = bpy.data.texts.new("{}_blend_shape_group.json".format(model_name))
-        blendshape_block.write(json.dumps(blendShapeGroups_list,indent = 4))
-        self.armature["blendshape_json"] = blendshape_block.name
+        write_textblock_and_assgin_to_armature("blendshape_group",blendShapeGroups_list)
         #endregion blendshape_master
 
         #region springbone
@@ -369,9 +382,7 @@ class Blend_model():
         for bone_group in spring_bonegroup_list:
             bone_group["bones"] = [ vrm_pydata.json["nodes"][node_id]["name"] for node_id in bone_group["bones"]]
             bone_group["colliderGroups"] = [vrm_pydata.json["nodes"][colliderGroups_list[collider_gp_id]["node"]]["name"] for collider_gp_id in bone_group["colliderGroups"]]
-        spring_bonegroup_block = bpy.data.texts.new("{}_secondary_root_bones.json".format(model_name))
-        spring_bonegroup_block.write(json.dumps(spring_bonegroup_list,indent = 4))
-        self.armature["spring_bone_json"] = spring_bonegroup_block.name
+        write_textblock_and_assgin_to_armature("spring_bone",spring_bonegroup_list)
         #endregion springbone
 
         return

@@ -54,3 +54,16 @@ class Vroid2VRC_ripsync_from_json_recipe(bpy.types.Operator):
         for k in bpy.context.active_object.data.shape_keys.key_blocks:
                 k.value = 0.0
         return {"FINISHED"}
+
+
+class VRM_VALIDATOR(bpy.types.Operator):
+    bl_idname = "vrm.model_validate"
+    bl_label = "check as VRM model"
+    bl_description = "NO Quad_Poly & N_GON, NO unSkind Mesh etc..."
+    bl_options = {'REGISTER', 'UNDO'}
+
+    #TODO UI & class register 
+
+    def execute(self,context):
+        #TODO
+        return {"FINISHED"}

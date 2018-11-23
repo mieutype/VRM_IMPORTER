@@ -115,13 +115,16 @@ class Blend_model():
 
                 #endregion tail pos    
                 self.bones[id] = b
+                if id in root_nodes:
+                    root_nodes.remove(id)
+                    print("{} is del".format(id))
                 if parent_id != -1:
                     b.parent = self.bones[parent_id]
                 if py_bone.children != None:
                         for x in py_bone.children:
                             bone_chain(x,id)
-                return 0
-        root_node_set = set(vrm_pydata.skins_root_node_list)
+            return 0
+        root_node_set = list(set(vrm_pydata.skins_root_node_list))
         root_nodes =  root_node_set if root_node_set else [node for scene in vrm_pydata.json["scenes"] for node in scene["nodes"]] 
         while len(root_nodes):
             bone_chain(root_nodes.pop(),-1)
@@ -434,7 +437,8 @@ class Blend_model():
         self.armature.rotation_mode = "XYZ"
         self.armature.rotation_euler[0] = numpy.deg2rad(90)
         self.armature.rotation_euler[2] = numpy.deg2rad(-180)
-        bpy.ops.object.transform_apply(rotation=True)
+        self.armature.location = [self.armature.location[axis]*inv for axis,inv in zip([0,2,1],[-1,1,1])]
+        bpy.ops.object.transform_apply(location = True,rotation=True)
         bpy.ops.object.mode_set(mode='OBJECT')
         bpy.ops.object.select_all(action="DESELECT")
         for obj in self.mesh_joined_objects:
@@ -447,7 +451,8 @@ class Blend_model():
             obj.rotation_mode = "XYZ"
             obj.rotation_euler[0] = numpy.deg2rad(90)
             obj.rotation_euler[2] = numpy.deg2rad(-180)
-            bpy.ops.object.transform_apply(rotation=True)
+            obj.location = [obj.location[axis]*inv for axis,inv in zip([0,2,1],[-1,1,1])]
+            bpy.ops.object.transform_apply(location= True,rotation=True)
             obj.select = False
         return
     
@@ -478,7 +483,7 @@ class Blend_model():
                 obj.parent_type = "BONE"
                 obj.parent_bone = node_name
                 offset = [collider["offset"]["x"],collider["offset"]["y"],collider["offset"]["z"]] #values直接はindexｱｸｾｽ出来ないのでしゃあなし
-                offset = [offset[axis]*inv for axis,inv in zip([0,2,1],[-1,1,1])]
+                offset = [offset[axis]*inv for axis,inv in zip([0,2,1],[-1,-1,1])]
                 
                 obj.matrix_world = self.armature.matrix_world * Matrix.Translation(offset) * self.armature.data.bones[node_name].matrix_local
                 obj.empty_draw_size = collider["radius"]  

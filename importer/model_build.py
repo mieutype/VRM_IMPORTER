@@ -203,7 +203,7 @@ class Blend_model():
         return 
 
     def make_primitive_mesh_objects(self, vrm_pydata):
-        self.primitive_obj_dict = dict()
+        self.primitive_obj_dict = {pymesh.object_id:[] for pymesh in vrm_pydata.meshes}
         morph_cache_dict = {} #key:tuple(POSITION,targets.POSITION),value:points_data
         #mesh_obj_build
         for pymesh in vrm_pydata.meshes:
@@ -211,10 +211,7 @@ class Blend_model():
             b_mesh.from_pydata(pymesh.POSITION, [], pymesh.face_indices.tolist())
             b_mesh.update()
             obj = bpy.data.objects.new(pymesh.name, b_mesh)
-            if not pymesh.object_id in self.primitive_obj_dict.keys():
-                self.primitive_obj_dict[pymesh.object_id] = [obj]
-            else: 
-                self.primitive_obj_dict[pymesh.object_id].append(obj)
+            self.primitive_obj_dict[pymesh.object_id].append(obj)
             #kuso of kuso kakugosiro
             #origin 0:Vtype_Node 1:mesh 2:skin
             origin = None

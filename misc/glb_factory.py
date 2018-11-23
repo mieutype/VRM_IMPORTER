@@ -231,7 +231,7 @@ class Glb_obj():
 		for id,mesh in enumerate([obj for obj in bpy.context.selected_objects if obj.type == "MESH"]):
 			self.json_dic["nodes"].append(OrderedDict({
 					"name":mesh.name,
-					"translation":[mesh.location[i] for i in range(3)], #原点にいてほしいけどね, vectorのままだとjsonに出来ないからこうする
+					"translation":self.axis_blender_to_glb(mesh.location), #原点にいてほしいけどね, vectorのままだとjsonに出来ないからこうする
 					"rotation":[0,0,0,1],	#このへんは規約なので
 					"scale":[1,1,1],		#このへんは規約なので
 					"mesh":id,
@@ -295,9 +295,9 @@ class Glb_obj():
 					for uvlayer_name in uvlayers_dic.values():
 						uv_layer = bm.loops.layers.uv[uvlayer_name]
 						uv_list += [loop[uv_layer].uv[0],loop[uv_layer].uv[1]]
-					cached_vert = unique_vertex_dic.get((*uv_list,loop.vert.index)) #keyがなければNoneを返す
-					if cached_vert is not None:
-						primitive_index_bin_dic[mat_id_dic[material_slot_dic[face.material_index]]] += I_scalar_packer(cached_vert)
+					cached_vert_id = unique_vertex_dic.get((*uv_list,loop.vert.index)) #keyがなければNoneを返す
+					if cached_vert_id is not None:
+						primitive_index_bin_dic[mat_id_dic[material_slot_dic[face.material_index]]] += I_scalar_packer(cached_vert_id)
 						primitive_index_vertex_count[mat_id_dic[material_slot_dic[face.material_index]]] += 1
 						continue
 					else: 

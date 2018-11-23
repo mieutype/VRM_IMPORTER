@@ -80,7 +80,17 @@ class Blend_model():
                 pass
             else:
                 py_bone = vrm_pydata.nodes_dict[id]
+                if py_bone.blend_bone:
+                    li = [py_bone.blend_bone]
+                    while li:
+                        bo = li.pop()
+                        if parent_id != -1:
+                            bo.translate(self.bones[parent_id].head)
+                        for ch in bo.children:
+                            li.append(ch)
+                    return
                 b = self.armature.data.edit_bones.new(py_bone.name)
+                py_bone.blend_bone = b
                 if parent_id == -1:
                     parent_pos = [0,0,0]
                 else:
@@ -115,9 +125,7 @@ class Blend_model():
 
                 #endregion tail pos    
                 self.bones[id] = b
-                if id in root_nodes:
-                    root_nodes.remove(id)
-                    print("{} is del".format(id))
+
                 if parent_id != -1:
                     b.parent = self.bones[parent_id]
                 if py_bone.children != None:

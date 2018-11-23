@@ -64,10 +64,11 @@ class Glb_obj():
 			if len(node["children"]) == 0:
 				del node["children"]
 			return node
+		skin = {"joints":[]}
 		for bone in self.armature.data.bones:
 			if bone.parent is None: #root bone
 				root_bone_id = bone_id_dic[bone.name]
-				skin = {"joints":[root_bone_id]}
+				skin["joints"].append(root_bone_id)
 				skin["skeleton"] = root_bone_id
 				scene.append(root_bone_id)
 				nodes.append(bone_to_node(bone))
@@ -78,7 +79,7 @@ class Glb_obj():
 					skin["joints"].append(bone_id_dic[child.name])
 					bone_children += [ch for ch in child.children]
 				nodes = sorted(nodes,key=lambda node: bone_id_dic[node["name"]])
-				skins.append(skin)
+		skins.append(skin)
 					
 
 		skin_invert_matrix_bin = b""
@@ -252,8 +253,8 @@ class Glb_obj():
 			node_id_dic = {node["name"]:i for i,node in enumerate(self.json_dic["nodes"])} 
 			def joint_id_from_node_name_solver(node_name):
 				node_id = node_id_dic[node_name]
-				skin_id = self.json_dic["skins"][0]["joints"].index(node_id)
-				return skin_id
+				joint_id = self.json_dic["skins"][0]["joints"].index(node_id)
+				return joint_id
 			v_group_name_dic = {i:vg.name for i,vg in enumerate(mesh.vertex_groups)}
 			fmin,fmax = float_info.min,float_info.max
 			unique_vertex_id = 0
@@ -466,7 +467,8 @@ class Glb_obj():
 									- self.armature.location[i] \
 									- self.armature.data.bones[empty.parent_bone].head_local[i] \
 									for i in range(3)]
-				collider["offset"] = OrderedDict({axis:o_s for axis,o_s in zip(("x","y","z"),self.axis_blender_to_glb(empty_offset_pos)) })
+				collider["offset"] = OrderedDict({axis: o_s for axis, o_s in zip(("x", "y", "z"), self.axis_blender_to_glb(empty_offset_pos))})
+				collider["offset"]["z"] = collider["offset"]["z"]*-1 #たぶんuniVRMのシリアライズがｺﾗｲﾀﾞｰだけunity系になってる
 				colliders.append(collider)
 			collider_group_list.append(collider_group)
 

@@ -147,7 +147,10 @@ def mesh_read(vrm_pydata):
         for j,primitive in enumerate(mesh["primitives"]):  
             vrm_mesh = VRM_Types.Mesh()
             vrm_mesh.object_id = n
-            vrm_mesh.name = mesh["name"]+str(j)
+            if j == 0:#mesh annotationとの兼ね合い
+                vrm_mesh.name = mesh["name"]
+            else :
+                vrm_mesh.name = mesh["name"]+str(j)
 
             #region 頂点index
             if primitive["mode"] != GLC.TRIANGLES:

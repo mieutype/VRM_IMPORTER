@@ -41,6 +41,7 @@ class Node(object):
         self.rotation = None
         self.scale = None
         self.children = None
+        self.blend_bone = None
 
 
 

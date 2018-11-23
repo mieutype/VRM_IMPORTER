@@ -488,7 +488,7 @@ class Blend_model():
                 obj.parent_type = "BONE"
                 obj.parent_bone = node_name
                 offset = [collider["offset"]["x"],collider["offset"]["y"],collider["offset"]["z"]] #values直接はindexｱｸｾｽ出来ないのでしゃあなし
-                offset = [offset[axis]*inv for axis,inv in zip([0,2,1],[-1,-1,1])]
+                offset = [offset[axis]*inv for axis,inv in zip([0,2,1],[-1,-1,1])] #TODO: Y軸反転はuniVRMのシリアライズに合わせてる
                 
                 obj.matrix_world = self.armature.matrix_world * Matrix.Translation(offset) * self.armature.data.bones[node_name].matrix_local
                 obj.empty_draw_size = collider["radius"]  

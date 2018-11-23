@@ -468,7 +468,7 @@ class Glb_obj():
 									- self.armature.data.bones[empty.parent_bone].head_local[i] \
 									for i in range(3)]
 				collider["offset"] = OrderedDict({axis: o_s for axis, o_s in zip(("x", "y", "z"), self.axis_blender_to_glb(empty_offset_pos))})
-				collider["offset"]["z"] = collider["offset"]["z"]*-1 #たぶんuniVRMのシリアライズがｺﾗｲﾀﾞｰだけunity系になってる
+				collider["offset"]["z"] = collider["offset"]["z"]*-1 #TODO: たぶんuniVRMのシリアライズがｺﾗｲﾀﾞｰだけunity系になってる
 				colliders.append(collider)
 			collider_group_list.append(collider_group)
 

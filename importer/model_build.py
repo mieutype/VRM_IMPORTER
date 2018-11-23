@@ -363,7 +363,7 @@ class Blend_model():
             firstperson_params["firstPersonBone"] = vrm_pydata.json["nodes"][firstperson_params["firstPersonBone"]]["name"]
         if "meshAnnotations" in firstperson_params.keys():
             for meshAnotation in firstperson_params["meshAnnotations"]:
-                meshAnotation["mesh"] = vrm_pydata.json["meshes"][firstperson_params["meshAnnotations"]["mesh"]]
+                meshAnotation["mesh"] = vrm_pydata.json["meshes"][meshAnotation["mesh"]]
 
         
         

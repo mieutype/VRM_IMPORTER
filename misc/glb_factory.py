@@ -103,7 +103,7 @@ class Glb_obj():
 
 	def texture_to_dic(self):
 		self.json_dic["samplers"] = [{
-            "magFilter": GL_CONSTANS.LINEAR, #TODO 決め打ちすんな？
+            "magFilter": GL_CONSTANS.LINEAR, #TODO: 決め打ちすんな？
             "minFilter": GL_CONSTANS.LINEAR,
             "wrapS": GL_CONSTANS.REPEAT,
             "wrapT": GL_CONSTANS.REPEAT
@@ -135,7 +135,7 @@ class Glb_obj():
 			if b_mat.texture_slots[0] is not None :
 				mat_dic.update({"baseColorTexture": {
 						"index": image_id_dic[b_mat.texture_slots[0].texture.image.name],
-						"texCoord": 0 #TODO
+						"texCoord": 0 #TODO:
 					}})
 
 			if not b_mat.use_transparency:
@@ -154,11 +154,11 @@ class Glb_obj():
 			v_mat_dic["shader"] = "VRM/MToon"
 			v_mat_dic["keywordMap"] = keyword_map = {}
 			v_mat_dic["tagMap"] = tag_map = {}
-			#TODO vector props
+			#TODO: vector props
 			v_mat_dic["vectorProperties"] = vec_dic = OrderedDict()
 			vec_dic["_Color"] = [*b_mat.diffuse_color,1.0]
-			vec_dic["_ShadeColor"] = [0.3,0.3,0.5,1.0] #TODO 適切な値を
-			#TODO float props
+			vec_dic["_ShadeColor"] = [0.3,0.3,0.5,1.0] #TODO: 適切な値を
+			#TODO: float props
 			v_mat_dic["floatProperties"] = float_dic = OrderedDict()
 			# _BlendMode : 0:Opacue 1:Cutout 2:Transparent 3:TransparentZwrite,
 			# _Src,_Dst(ry): CONST
@@ -235,7 +235,7 @@ class Glb_obj():
 					"rotation":[0,0,0,1],	#このへんは規約なので
 					"scale":[1,1,1],		#このへんは規約なので
 					"mesh":id,
-					"skin":0 #TODO　決め打ちってどうよ：一体のモデルなのだから２つもあっては困る(から決め打ち(やめろ(やだ))
+					"skin":0 #TODO:　決め打ちってどうよ：一体のモデルなのだから２つもあっては困る(から決め打ち(やめろ(やだ))
 				}))
 			self.json_dic["scenes"][0]["nodes"].append(len(self.json_dic["nodes"])-1)
 			#region hell
@@ -310,7 +310,7 @@ class Glb_obj():
 						shape_layer = bm.verts.layers.shape[shape_name]
 						morph_pos = self.axis_blender_to_glb( [loop.vert[shape_layer][i] - loop.vert.co[i] for i in range(3)])
 						shape_pos_bin_dic[shape_name] += f_vec3_packer(*morph_pos)
-						shape_normal_bin_dic[shape_name] +=f_vec3_packer(*[0.0,0.0,0.0]) #FIXME ちゃんとした値を入れる
+						shape_normal_bin_dic[shape_name] +=f_vec3_packer(*[0.0,0.0,0.0]) #FIXME: ちゃんとした値を入れる
 						min_max(shape_min_max_dic[shape_name],morph_pos)
 					magic = 0
 					joints = [magic,magic,magic,magic]
@@ -334,7 +334,7 @@ class Glb_obj():
 					unique_vertex_id += 1
 				
 			#DONE :index position, uv, normal, position morph,JOINT WEIGHT  
-			#TODO morph_normal, v_color...?
+			#TODO: morph_normal, v_color...?
 			primitive_glbs_dic = OrderedDict({
 				mat_id:Glb_bin(index_bin,"SCALAR",GL_CONSTANS.UNSIGNED_INT,primitive_index_vertex_count[mat_id],None,self.glb_bin_collector)
 				for mat_id,index_bin in primitive_index_bin_dic.items() if index_bin !=b""
@@ -391,8 +391,6 @@ class Glb_obj():
 		#materialProperties　は　material_to_dic()で処理する
 		#region vrm_extension
 		vrm_extension_dic = OrderedDict()
-		#
-		#
 
 		#region meta
 		vrm_extension_dic["meta"] = vrm_meta_dic = {}
@@ -426,8 +424,14 @@ class Glb_obj():
 				})
 		vrm_humanoid_dic.update(json.loads(self.textblock2str(bpy.data.texts[self.armature["humanoid_params"]])))
 		#endregion humanoid
+		#region firstPerson
+		#TODO: blend shape first person
 		vrm_extension_dic["firstPerson"] = vrm_FP_dic = {}
+		vrm_FP_dic.update(json.loads(self.textblock2str(bpy.data.texts[self.armature["firstPerson_params"]])))
+		if vrm_FP_dic["firstPersonBone"] != -1:
+			vrm_FP_dic["firstPersonBone"] = node_name_id_dic[vrm_FP_dic["firstPersonBone"]]
 
+		#endregion firstPerson
 		#region blendShapeMaster
 		vrm_extension_dic["blendShapeMaster"] = vrm_BSM_dic = {}
 		BSM_list = json.loads(self.textblock2str(bpy.data.texts[self.armature["blendshape_group"]]))
@@ -442,12 +446,10 @@ class Glb_obj():
 		vrm_BSM_dic["blendShapeGroups"] = BSM_list
 		#endregion blendShapeMaster
 
-		node_name_id_dic = {node["name"]:i for i,node in enumerate(self.json_dic["nodes"])}
 		#region secondaryAnimation
 		vrm_extension_dic["secondaryAnimation"] = {"boneGroups":[],"colliderGroups":[]}
 
 		#region colliderGroups
-		#TODO colliderGroups
 		#armatureの子emptyを変換する
 		collider_group_list = []
 		empty_dic = {node_name_id_dic[ch.parent_bone]:[] for ch in self.armature.children if ch.type == "EMPTY"}

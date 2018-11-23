@@ -62,7 +62,7 @@ class VRM_VALIDATOR(bpy.types.Operator):
     bl_description = "NO Quad_Poly & N_GON, NO unSkind Mesh etc..."
     bl_options = {'REGISTER', 'UNDO'}
 
-    #TODO UI & class register 
+    #TODO: UI & class register 
 
     def execute(self,context):
         #TODO

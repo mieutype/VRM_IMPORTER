@@ -7,7 +7,7 @@ https://opensource.org/licenses/mit-license.php
 
 from . import V_Types as VRM_Types
 
-def material(mat,materialPropaties,textures)->VRM_Types.Material:
+def material(mat,ext_mat,textures)->VRM_Types.Material:
     v_mat = VRM_Types.Material()
     v_mat.name = mat["name"]
 
@@ -41,7 +41,7 @@ def material(mat,materialPropaties,textures)->VRM_Types.Material:
             texture_index = matprop["textureProperties"][attr]
         return texture_index
     #拡張部分    
-    #TODO　Emission_Color,shade_color等々は単純には再現不可なのでいつか
+    #TODO:　Emission_Color,shade_color等々は単純には再現不可なのでいつか
     try:
 
         if ext_mat["shader"] == "VRM/MToon":
@@ -49,6 +49,7 @@ def material(mat,materialPropaties,textures)->VRM_Types.Material:
             if "_Color" in ext_mat:
                 v_mat.base_color = ext_mat["_Color"]
             v_mat.color_texture_index = get_texture_index(ext_mat,"_MainTex")
+            v_mat.color_texcoord_index = 0
             v_mat.normal_texture_index = get_texture_index(ext_mat,"_BumpMap")
             v_mat.normal_texcoord_index = 0
             #拡張テクスチャ

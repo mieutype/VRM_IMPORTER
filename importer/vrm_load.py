@@ -220,7 +220,7 @@ def material_read(vrm_pydata):
     #skinをパース　->バイナリの中身はskining実装の横着用
     #skinのjointsの(nodesの)indexをvertsのjoints_0は指定してる
     #inverseBindMatrices: 単にｽｷﾆﾝｸﾞするときの逆行列。読み込み不要なのでしない(自前計算もできる、めんどいけど)
-    #ついでに[i][3]ではなく、[3][i]にマイナスx,y,zが入っている。　ここで詰まった。
+    #ついでに[i][3]ではなく、[3][i]にマイナスx,y,zが入っている。　ここで詰まった。(出力時に)
     #joints:JOINTS_0の指定node番号のindex
 def skin_read(vrm_pydata):
     for skin in vrm_pydata.json["skins"]:

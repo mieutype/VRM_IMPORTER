@@ -279,7 +279,7 @@ class Blend_model():
             
             #vertex_color　なぜかこれだけ面基準で、loose verts and edgesに色は塗れない
             #また、頂点カラーにalpha（４要素目）がないから完全対応は無理
-            #TODO テスト (懸案：cleaningで頂点結合でデータ物故割れる説)
+            #TODO: テスト (懸案：cleaningで頂点結合でデータ物故割れる説)
             vcolor_count = 0
             while True:
                 vc_color_name = "COLOR_{}".format(vcolor_count)
@@ -357,8 +357,12 @@ class Blend_model():
         write_textblock_and_assgin_to_armature("humanoid_params",humanoid_params)
         #endregion humanoid_parameter
         #region first_person
-        #TODO blendshape & bone controlle
-        
+        #TODO: blendshape firstperson control
+        #TODO: mesh annotations
+        firstperson_params = copy.deepcopy(vrm_ext_dic["firstPerson"])
+        if firstperson_params["firstPersonBone"] != -1:
+            firstperson_params["firstPersonBone"] = vrm_pydata.json["nodes"][firstperson_params["firstPersonBone"]]["name"]
+        write_textblock_and_assgin_to_armature("firstPerson_params",firstperson_params)
         #endregion first_person
 
         #region blendshape_master

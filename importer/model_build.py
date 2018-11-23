@@ -357,11 +357,16 @@ class Blend_model():
         write_textblock_and_assgin_to_armature("humanoid_params",humanoid_params)
         #endregion humanoid_parameter
         #region first_person
-        #TODO: blendshape firstperson control
         #TODO: mesh annotations
         firstperson_params = copy.deepcopy(vrm_ext_dic["firstPerson"])
         if firstperson_params["firstPersonBone"] != -1:
             firstperson_params["firstPersonBone"] = vrm_pydata.json["nodes"][firstperson_params["firstPersonBone"]]["name"]
+        if "meshAnnotations" in firstperson_params.keys():
+            for meshAnotation in firstperson_params["meshAnnotations"]:
+                meshAnotation["mesh"] = vrm_pydata.json["meshes"][firstperson_params["meshAnnotations"]["mesh"]]
+
+        
+        
         write_textblock_and_assgin_to_armature("firstPerson_params",firstperson_params)
         #endregion first_person
 
@@ -370,6 +375,7 @@ class Blend_model():
         #meshをidから名前に
         #weightを0-100から0-1に
         #shape_indexを名前に
+        #materialValuesはそのままで行けるハズ・・・
         for bsg in blendShapeGroups_list:
             for bind_dic in bsg["binds"]:
                 bind_dic["index"] = vrm_pydata.json["meshes"][bind_dic["mesh"]]["primitives"][0]["extras"]["targetNames"][bind_dic["index"]]

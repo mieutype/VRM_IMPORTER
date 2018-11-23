@@ -199,7 +199,7 @@ class Glb_obj():
 				try:
 					tex_dic = {tex_attr:image_id_dic[b_mat.texture_slots[tex_slot_id].texture.image.name]}
 					dic.update(tex_dic)
-				except AttributeError as e:
+				except AttributeError:
 					print("{} is nothing".format(tex_attr))
 				return 
 			v_mat_dic["textureProperties"] = tex_dic = OrderedDict()
@@ -425,11 +425,13 @@ class Glb_obj():
 		vrm_humanoid_dic.update(json.loads(self.textblock2str(bpy.data.texts[self.armature["humanoid_params"]])))
 		#endregion humanoid
 		#region firstPerson
-		#TODO: blend shape first person
 		vrm_extension_dic["firstPerson"] = vrm_FP_dic = {}
 		vrm_FP_dic.update(json.loads(self.textblock2str(bpy.data.texts[self.armature["firstPerson_params"]])))
 		if vrm_FP_dic["firstPersonBone"] != -1:
 			vrm_FP_dic["firstPersonBone"] = node_name_id_dic[vrm_FP_dic["firstPersonBone"]]
+		if "meshAnnotations" in vrm_FP_dic.keys():
+			for meshAnnotation in vrm_FP_dic["meshAnnotations"]:
+				meshAnnotation["mesh"] = [i for i,mesh in enumerate(self.json_dic["meshes"]) if mesh["name"]==meshAnnotation["mesh"]][0]
 
 		#endregion firstPerson
 		#region blendShapeMaster

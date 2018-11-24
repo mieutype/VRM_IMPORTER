@@ -316,6 +316,9 @@ class Glb_obj():
 					magic = 0
 					joints = [magic,magic,magic,magic]
 					weights = [0.0, 0.0, 0.0, 0.0]
+					if len(mesh.data.vertices[loop.vert.index].groups) >= 5:
+						print("vertex weights are less than 4 in {}".format(mesh.name))
+						raise Exception
 					for v_group in mesh.data.vertices[loop.vert.index].groups:						
 							weights.pop(3)
 							weights.insert(0,v_group.weight)
@@ -323,6 +326,14 @@ class Glb_obj():
 							joints.insert(0,joint_id_from_node_name_solver(
 								v_group_name_dic[v_group.group])
 								)
+					nomalize_fact = sum(weights)
+					try:
+						weights = [weights[i]/nomalize_fact for i in range(4)]
+					except ZeroDivisionError :
+						print("vertex has no weight in {}".format(mesh.name)) 
+						raise ZeroDivisionError
+					if sum(weights) < 1:
+						weights[0] += 1 - sum(weights)
 					joints_bin += H_vec4_packer(*joints)
 					weights_bin += f_vec4_packer(*weights) 
 					vert_location = self.axis_blender_to_glb(loop.vert.co)

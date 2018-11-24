@@ -65,5 +65,33 @@ class VRM_VALIDATOR(bpy.types.Operator):
     #TODO: UI & class register 
 
     def execute(self,context):
-        #TODO
+        armature_count = 0
+        node_name_set = set()
+        for obj in bpy.context.selected_objects:
+            if obj.name in node_name_set:
+                print("VRM exporter need Nodes(mesh,bones) name is unique")
+            node_name_set.add(obj.name)
+            if obj.location != [0,0,0]:#mesh and armature origin is on [0,0,0]
+                print("There are not on origine location object {}".format(obj.name))
+            if obj.type == "MESH":
+                for poly in mesh.data.polygons:
+                    if poly.loop_total > 3:#polygons need all triangle
+                        print("There are non Triangle faces in {}".format(mesh.name))
+                #TODO: material's images are saved check
+            if obj.type == "ARMATURE":
+                armature_count += 1
+                if armature_count > 2:#only one armature
+                    print("VRM expoter needs only one armature")
+                already_root_bone_exist = False
+                for bone in obj.data.bones:
+                    if bone.name in node_name_set:#nodes name is unique
+                        print("VRM exporter need Nodes(mesh,bones) name is unique")
+                    node_name_set.add(bone.name)
+                    if bone.parent == None: #root bone is only 1
+                        if already_root_bone_exist:
+                            print("root bone is only one {},{}".format(bone.name,already_root_bone_exist))
+                        already_root_bone_exist = bone.name
+                #TODO: T_POSE,
+            
+        
         return {"FINISHED"}

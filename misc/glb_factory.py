@@ -422,7 +422,10 @@ class Glb_obj():
 		]
 		for key in vrm_metas:
 			vrm_meta_dic[key] = self.armature[key] if key in self.armature.keys() else ""
-		vrm_meta_dic["textures"] = len(self.glb_bin_collector.image_bins)
+		if "texture" in self.armature.keys():
+			thumnail_index_list =[i for i,img in enumerate(self.glb_bin_collector.image_bins) if img.name == self.armature["texture"]]
+			if len(thumnail_index_list) > 0 :
+				vrm_meta_dic["texture"] = thumnail_index_list[0]
 		#endregion meta
 		#region humanoid
 		vrm_extension_dic["humanoid"] = vrm_humanoid_dic = {"humanBones":[]}

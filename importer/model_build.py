@@ -341,7 +341,10 @@ class Blend_model():
             pass
         try:   
             for metatag,metainfo in vrm_pydata.json["extensions"]["VRM"]["meta"].items():
-                self.armature[metatag] = metainfo
+                if metatag == "texture":
+                    self.armature[metatag] = self.textures[metainfo].image.name
+                else:
+                    self.armature[metatag] = metainfo
         except Exception as e:
             print(e)
             pass

@@ -38,7 +38,22 @@ class Glb_obj():
 		return "".join([line.body for line in textblock.lines])
 
 	def image_to_bin(self):
-		for image in bpy.data.images:
+		#collect used image
+		used_image = []
+		used_material_set = set()
+		for mesh in [obj for obj in bpy.context.selected_objects if obj.type == "MESH"]:
+			for mat in mesh.data.materials:
+				used_material_set.add(mat)
+		for mat in used_material_set:
+			if mat.texture_slots is not None:
+				used_image += [tex_slot.texture.image for tex_slot in mat.texture_slots if tex_slot is not None]
+		#thumbnail
+		used_image.append(bpy.data.images[self.armature["texture"]])
+
+		for image in used_image:
+			if image.is_dirty:
+				print("unsaved image name:{}, please save it".format(image.name))
+				raise Exception()
 			with open(image.filepath_from_user(),"rb") as f:
 				image_bin = f.read()
 			name = image.name

@@ -139,7 +139,12 @@ class Glb_obj():
 		VRM_material_props_list = []
 
 		image_id_dic = {image.name:image.image_id for image in self.glb_bin_collector.image_bins}
-		for b_mat in bpy.data.materials:
+		used_material_set = set()
+		for mesh in [obj for obj in bpy.context.selected_objects if obj.type == "MESH"]:
+			for mat in mesh.data.materials:
+				used_material_set.add(mat)
+
+		for b_mat in used_material_set:
 			#region pbr_mat
 			mat_dic = {"name":b_mat.name}
 			
@@ -247,10 +252,11 @@ class Glb_obj():
 		self.json_dic["meshes"] = []
 		for id,mesh in enumerate([obj for obj in bpy.context.selected_objects if obj.type == "MESH"]):
 			is_skin_mesh = True
-			if len([m for m in mesh.modifiers if m.type =="ARMATURE"]) == 0:
-				if mesh.parent.type == "ARMATURE":
-					if mesh.parent_bone != None:
-						is_skin_mesh = False
+			if len([m for m in mesh.modifiers if m.type == "ARMATURE"]) == 0:
+				if mesh.parent is not None:
+					if mesh.parent.type == "ARMATURE":
+						if mesh.parent_bone != None:
+							is_skin_mesh = False
 			node_dic = OrderedDict({
 					"name":mesh.name,
 					"translation":self.axis_blender_to_glb(mesh.location), #原点にいてほしいけどね, vectorのままだとjsonに出来ないからこうする

@@ -77,7 +77,8 @@ class VRM_VALIDATOR(bpy.types.Operator):
                 for poly in mesh.data.polygons:
                     if poly.loop_total > 3:#polygons need all triangle
                         print("There are non Triangle faces in {}".format(mesh.name))
-                #TODO: material's images are saved check
+                #TODO: check material's images are saved 
+                #TODO: check obj has UV 
             if obj.type == "ARMATURE":
                 armature_count += 1
                 if armature_count > 2:#only one armature

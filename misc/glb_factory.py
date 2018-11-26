@@ -193,6 +193,7 @@ class Glb_obj():
 			
 			float_dic["_CullMode"] = 0 #no cull
 			float_dic["_OutlineCullMode"] = 1 #front face cull (for invert normal outline)
+			float_dic["_DebugMode"] = 0
 			keyword_map.update({"MTOON_DEBUG_NORMAL":False})
 			keyword_map.update({"MTOON_DEBUG_LITSHADERATE":False})
 			#region texture props
@@ -230,15 +231,33 @@ class Glb_obj():
 	def mesh_to_bin_and_dic(self):
 		self.json_dic["meshes"] = []
 		for id,mesh in enumerate([obj for obj in bpy.context.selected_objects if obj.type == "MESH"]):
-			self.json_dic["nodes"].append(OrderedDict({
+			is_skin_mesh = True
+			if len([m for m in mesh.modifiers if m.type =="ARMATURE"]) == 0:
+				if mesh.parent.type == "ARMATURE":
+					if mesh.parent_bone != None:
+						is_skin_mesh = False
+			node_dic = OrderedDict({
 					"name":mesh.name,
 					"translation":self.axis_blender_to_glb(mesh.location), #原点にいてほしいけどね, vectorのままだとjsonに出来ないからこうする
 					"rotation":[0,0,0,1],	#このへんは規約なので
 					"scale":[1,1,1],		#このへんは規約なので
 					"mesh":id,
-					"skin":0 #TODO:　決め打ちってどうよ：一体のモデルなのだから２つもあっては困る(から決め打ち(やめろ(やだ))
-				}))
-			self.json_dic["scenes"][0]["nodes"].append(len(self.json_dic["nodes"])-1)
+				})
+			if is_skin_mesh:
+				node_dic["skin"] = 0 #TODO:　決め打ちってどうよ：一体のモデルなのだから２つもあっては困る(から決め打ち(やめろ(やだ))
+			self.json_dic["nodes"].append(node_dic)
+			mesh_node_id = len(self.json_dic["nodes"])-1
+
+			if is_skin_mesh:
+				self.json_dic["scenes"][0]["nodes"].append(mesh_node_id)
+			else:
+				parent_node = [node for node in self.json_dic["nodes"] if node["name"] == mesh.parent_bone ][0]
+				if "children" in parent_node.keys():
+					parent_node["children"].append(mesh_node_id)
+				else:
+					parent_node["children"] = [mesh_node_id]
+					relate_pos = [mesh.location[i] - self.armature.data.bones[mesh.parent_bone].head_local[i] for i in range(3)]
+					self.json_dic["nodes"][mesh_node_id]["translation"] = self.axis_blender_to_glb(relate_pos)
 			#region hell
 			bpy.ops.object.mode_set(mode='OBJECT')
 			mesh.hide = False
@@ -313,29 +332,31 @@ class Glb_obj():
 						shape_pos_bin_dic[shape_name] += f_vec3_packer(*morph_pos)
 						shape_normal_bin_dic[shape_name] +=f_vec3_packer(*[0.0,0.0,0.0]) #FIXME: ちゃんとした値を入れる
 						min_max(shape_min_max_dic[shape_name],morph_pos)
-					magic = 0
-					joints = [magic,magic,magic,magic]
-					weights = [0.0, 0.0, 0.0, 0.0]
-					if len(mesh.data.vertices[loop.vert.index].groups) >= 5:
-						print("vertex weights are less than 4 in {}".format(mesh.name))
-						raise Exception
-					for v_group in mesh.data.vertices[loop.vert.index].groups:						
-							weights.pop(3)
-							weights.insert(0,v_group.weight)
-							joints.pop(3)
-							joints.insert(0,joint_id_from_node_name_solver(
-								v_group_name_dic[v_group.group])
-								)
-					nomalize_fact = sum(weights)
-					try:
-						weights = [weights[i]/nomalize_fact for i in range(4)]
-					except ZeroDivisionError :
-						print("vertex has no weight in {}".format(mesh.name)) 
-						raise ZeroDivisionError
-					if sum(weights) < 1:
-						weights[0] += 1 - sum(weights)
-					joints_bin += H_vec4_packer(*joints)
-					weights_bin += f_vec4_packer(*weights) 
+					if is_skin_mesh:			
+						magic = 0
+						joints = [magic,magic,magic,magic]
+						weights = [0.0, 0.0, 0.0, 0.0]
+						if len(mesh.data.vertices[loop.vert.index].groups) >= 5:
+							print("vertex weights are less than 4 in {}".format(mesh.name))
+							raise Exception
+						for v_group in mesh.data.vertices[loop.vert.index].groups:						
+								weights.pop(3)
+								weights.insert(0,v_group.weight)
+								joints.pop(3)
+								joints.insert(0,joint_id_from_node_name_solver(
+									v_group_name_dic[v_group.group])
+									)
+						nomalize_fact = sum(weights)
+						try:
+							weights = [weights[i]/nomalize_fact for i in range(4)]
+						except ZeroDivisionError :
+							print("vertex has no weight in {}".format(mesh.name)) 
+							raise ZeroDivisionError
+						if sum(weights) < 1:
+							weights[0] += 1 - sum(weights)
+						joints_bin += H_vec4_packer(*joints)
+						weights_bin += f_vec4_packer(*weights) 
+
 					vert_location = self.axis_blender_to_glb(loop.vert.co)
 					position_bin += f_vec3_packer(*vert_location)
 					min_max(position_min_max,vert_location)
@@ -356,8 +377,9 @@ class Glb_obj():
 			uv_glbs = [
 				Glb_bin(texcood_bin,"VEC2",GL_CONSTANS.FLOAT,unique_vertex_id,None,self.glb_bin_collector)
 					for texcood_bin in texcord_bins.values()]
-			joints_glb = Glb_bin(joints_bin,"VEC4",GL_CONSTANS.UNSIGNED_SHORT,unique_vertex_id,None,self.glb_bin_collector)
-			weights_glb = Glb_bin(weights_bin,"VEC4",GL_CONSTANS.FLOAT,unique_vertex_id,None,self.glb_bin_collector)
+			if is_skin_mesh:
+				joints_glb = Glb_bin(joints_bin,"VEC4",GL_CONSTANS.UNSIGNED_SHORT,unique_vertex_id,None,self.glb_bin_collector)
+				weights_glb = Glb_bin(weights_bin,"VEC4",GL_CONSTANS.FLOAT,unique_vertex_id,None,self.glb_bin_collector)
 			if len(shape_pos_bin_dic.keys()) != 0:
 				morph_pos_glbs = [Glb_bin(morph_pos_bin,"VEC3",GL_CONSTANS.FLOAT,unique_vertex_id,morph_minmax,self.glb_bin_collector) 
 						for morph_pos_bin,morph_minmax in zip(shape_pos_bin_dic.values(),shape_min_max_dic.values())
@@ -373,9 +395,12 @@ class Glb_obj():
 				primitive["attributes"] = {
 					"POSITION":pos_glb.accessor_id,
 					"NORMAL":nor_glb.accessor_id,
-					"JOINTS_0":joints_glb.accessor_id,
-					"WEIGHTS_0":weights_glb.accessor_id
 				}
+				if is_skin_mesh:
+					primitive["attributes"].update({
+						"JOINTS_0":joints_glb.accessor_id,
+						"WEIGHTS_0":weights_glb.accessor_id
+					})
 				primitive["attributes"].update({"TEXCOORD_{}".format(i):uv_glb.accessor_id for i,uv_glb in enumerate(uv_glbs)})
 				if len(shape_pos_bin_dic.keys()) != 0:
 					primitive["targets"]=[{"POSITION":morph_pos_glb.accessor_id,"NORMAL":morph_normal_glb.accessor_id} for morph_pos_glb,morph_normal_glb in zip(morph_pos_glbs,morph_normal_glbs)]

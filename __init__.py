@@ -96,12 +96,13 @@ class VRM_IMPORTER_UI_controller(bpy.types.Panel):
         self.layout.label(text="*symmetry is in default blender")
         if context.mode == "OBJECT":
             if context.active_object is not None:
+                self.layout.operator(VRM_HELPER.VRM_VALIDATOR.bl_idname)
                 if context.active_object.type == 'ARMATURE':
                     self.layout.label(icon ="ERROR" ,text="EXPERIMENTAL!!!")
                     self.layout.operator(VRM_HELPER.Bones_rename.bl_idname)
-            if context.active_object.type =="MESH":
-                    self.layout.label(icon="ERROR",text="EXPERIMENTAL！お試し版。あてにしない")
-                    self.layout.operator(VRM_HELPER.Vroid2VRC_ripsync_from_json_recipe.bl_idname)
+                if context.active_object.type =="MESH":
+                        self.layout.label(icon="ERROR",text="EXPERIMENTAL！お試し版。あてにしない")
+                        self.layout.operator(VRM_HELPER.Vroid2VRC_ripsync_from_json_recipe.bl_idname)
         if context.mode == "EDIT_MESH":
             self.layout.operator(bpy.ops.mesh.symmetry_snap.idname_py())
 
@@ -113,6 +114,7 @@ classes = (
     ExportVRM,
     VRM_HELPER.Bones_rename,
     VRM_HELPER.Vroid2VRC_ripsync_from_json_recipe,
+    VRM_HELPER.VRM_VALIDATOR,
     VRM_IMPORTER_UI_controller
 )
 

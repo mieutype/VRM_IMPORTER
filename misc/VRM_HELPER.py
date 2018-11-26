@@ -8,6 +8,7 @@ import bpy
 import bmesh
 import re
 from math import sqrt, pow
+from mathutils import Vector
 from collections import deque
 class Bones_rename(bpy.types.Operator):
     bl_idname = "vrm.bones_rename"
@@ -62,24 +63,25 @@ class VRM_VALIDATOR(bpy.types.Operator):
     bl_description = "NO Quad_Poly & N_GON, NO unSkind Mesh etc..."
     bl_options = {'REGISTER', 'UNDO'}
 
-    #TODO: UI & class register 
 
     def execute(self,context):
+        print("validation start")
         armature_count = 0
+        armature = None
         node_name_set = set()
         for obj in bpy.context.selected_objects:
             if obj.name in node_name_set:
                 print("VRM exporter need Nodes(mesh,bones) name is unique")
             node_name_set.add(obj.name)
-            if obj.location != [0,0,0]:#mesh and armature origin is on [0,0,0]
-                print("There are not on origine location object {}".format(obj.name))
+            if obj.type != "EMPTY" and (obj.parent is not None and obj.parent.type != "ARMATURE" and obj.type == "MESH"):
+                if obj.location != Vector([0.0,0.0,0.0]):#mesh and armature origin is on [0,0,0]
+                    print("There are not on origine location object {}".format(obj.name))
             if obj.type == "MESH":
-                for poly in mesh.data.polygons:
+                for poly in obj.data.polygons:
                     if poly.loop_total > 3:#polygons need all triangle
-                        print("There are non Triangle faces in {}".format(mesh.name))
-                #TODO: check material's images are saved 
-                #TODO: check obj has UV 
+                        print("There are non Triangle faces in {}".format(obj.name))
             if obj.type == "ARMATURE":
+                armature = obj
                 armature_count += 1
                 if armature_count > 2:#only one armature
                     print("VRM expoter needs only one armature")
@@ -93,6 +95,46 @@ class VRM_VALIDATOR(bpy.types.Operator):
                             print("root bone is only one {},{}".format(bone.name,already_root_bone_exist))
                         already_root_bone_exist = bone.name
                 #TODO: T_POSE,
-            
-        
+                require_human_bone_dic = {bone_tag : None for bone_tag in [
+                "hips","leftUpperLeg","rightUpperLeg","leftLowerLeg","rightLowerLeg","leftFoot","rightFoot",
+                "spine","chest","neck","head","leftUpperArm","rightUpperArm",
+                "leftLowerArm","rightLowerArm","leftHand","rightHand"
+                ]}
+                for bone in armature.data.bones:
+                    if "humanBone" in bone.keys():
+                        if bone["humanBone"] in require_human_bone_dic.keys():
+                            if require_human_bone_dic[bone["humanBone"]]:
+                                print("humanBone is Dubled with {},{}".format(bone.name,require_human_bone_dic[bone["humanBone"]].name))
+                            else:
+                                require_human_bone_dic[bone["humanBone"]] = bone
+                for k,v in require_human_bone_dic.items():
+                    if v is None:
+                        print("humanBone: {} is not defined.".format(k))
+                defined_human_bone = ["jaw","leftShoulder","rightShoulder",
+                "leftEye","rightEye","upperChest","leftToes","rightToes",
+                "leftThumbProximal","leftThumbIntermediate","leftThumbDistal","leftIndexProximal",
+                "leftIndexIntermediate","leftIndexDistal","leftMiddleProximal","leftMiddleIntermediate",
+                "leftMiddleDistal","leftRingProximal","leftRingIntermediate","leftRingDistal",
+                "leftLittleProximal","leftLittleIntermediate","leftLittleDistal",
+                "rightThumbProximal","rightThumbIntermediate","rightThumbDistal",
+                "rightIndexProximal","rightIndexIntermediate","rightIndexDistal",
+                "rightMiddleProximal","rightMiddleIntermediate","rightMiddleDistal",
+                "rightRingProximal","rightRingIntermediate","rightRingDistal",
+                "rightLittleProximal","rightLittleIntermediate","rightLittleDistal"
+                ]
+
+        used_image = []
+        used_material_set = set()
+        for mesh in [obj for obj in bpy.context.selected_objects if obj.type == "MESH"]:
+            for mat in mesh.data.materials:
+                used_material_set.add(mat)
+        for mat in used_material_set:
+            if mat.texture_slots is not None:
+	            used_image += [tex_slot.texture.image for tex_slot in mat.texture_slots if tex_slot is not None]
+		#thumbnail
+        used_image.append(bpy.data.images[armature["texture"]])
+        for img in used_image:
+            if img.is_dirty:
+                print("{} is not saved, please save.".format(img.name))
+        print("validation finished")
         return {"FINISHED"}

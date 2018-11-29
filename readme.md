@@ -5,7 +5,14 @@
  - インポートには数十秒程度かかります。しばらく待ってみてください。
 ## 雰囲気でｲﾝﾎﾟｰﾄしたので、間違いがあります。
 ## 変更禁止(CC_ND)VRMは弾く" 仕様 "です悪しからず。
-
+## インストール方法
+ - そこの右上の緑のボタンを押してZIP Download
+ ｰ blender->User preference->addon -> addon installで先に落としたZipを選ぶ
+ - おわり
+## つかいかた
+ - menubar->File->import->VRM
+ - select relational object(armature,meshes) menubar->File->export->VRM
+ - export require setting text file in blender text editor, metas in custum propaty in armature object and humanbone custom propaties and, so on.
 ## 既知の不具合　
  - マテリアルがおかしい->blender2.8が出たら本気だす(直すとは言ってない)
 

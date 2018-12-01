@@ -29,7 +29,7 @@ bl_info = {
 
 
 class ImportVRM(bpy.types.Operator,ImportHelper):
-    bl_idname = "import.vrm"
+    bl_idname = "import_scene.vrm"
     bl_label = "import VRM"
     bl_description = "import VRM"
     bl_options = {'REGISTER', 'UNDO'}

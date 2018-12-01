@@ -54,7 +54,7 @@ def menu_import(self, context):
     op.is_put_spring_bone_info = True
 
 class ExportVRM(bpy.types.Operator,ExportHelper):
-    bl_idname = "export.vrm"
+    bl_idname = "export_scene.vrm"
     bl_label = "export VRM"
     bl_description = "export VRM"
     bl_options = {'REGISTER', 'UNDO'}

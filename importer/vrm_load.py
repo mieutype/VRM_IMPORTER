@@ -9,7 +9,7 @@ https://opensource.org/licenses/mit-license.php
 #for python3.5 - for blender2.79
 from .binaly_loader import Binaly_Reader
 from ..gl_const import GL_CONSTANS as GLC
-from . import V_Types as VRM_Types
+from .. import V_Types as VRM_Types
 from . import vrm2pydata_factory
 import os,re,copy
 from math import sqrt,pow

@@ -8,7 +8,7 @@ https://opensource.org/licenses/mit-license.php
 
 import bpy, bmesh
 from mathutils import Vector,Matrix
-from . import V_Types as VRM_Types
+from .. import V_Types as VRM_Types
 from math import sqrt,pow
 import numpy
 import json,copy

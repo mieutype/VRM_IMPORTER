@@ -5,7 +5,7 @@ https://opensource.org/licenses/mit-license.php
 
 """
 
-from . import V_Types as VRM_Types
+from .. import V_Types as VRM_Types
 
 def bone(node)->VRM_Types.Node:
     v_node = VRM_Types.Node()

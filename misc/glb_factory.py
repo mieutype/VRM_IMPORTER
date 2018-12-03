@@ -307,8 +307,12 @@ class Glb_obj():
 			material_slot_dic = {i:mat.name for i,mat in enumerate(mesh.material_slots)} 
 			node_id_dic = {node["name"]:i for i,node in enumerate(self.json_dic["nodes"])} 
 			def joint_id_from_node_name_solver(node_name):
-				node_id = node_id_dic[node_name]
-				joint_id = self.json_dic["skins"][0]["joints"].index(node_id)
+				try:
+					node_id = node_id_dic[node_name]
+					joint_id = self.json_dic["skins"][0]["joints"].index(node_id)
+				except ValueError:
+					joint_id = -1 #存在しないボーンを指してる場合は-1を返す
+					print("{} bone may be not exist".format(node_name))
 				return joint_id
 			v_group_name_dic = {i:vg.name for i,vg in enumerate(mesh.vertex_groups)}
 			fmin,fmax = float_info.min,float_info.max
@@ -375,13 +379,14 @@ class Glb_obj():
 						if len(mesh.data.vertices[loop.vert.index].groups) >= 5:
 							print("vertex weights are less than 4 in {}".format(mesh.name))
 							raise Exception
-						for v_group in mesh.data.vertices[loop.vert.index].groups:						
-								weights.pop(3)
-								weights.insert(0,v_group.weight)
-								joints.pop(3)
-								joints.insert(0,joint_id_from_node_name_solver(
-									v_group_name_dic[v_group.group])
-									)
+						for v_group in mesh.data.vertices[loop.vert.index].groups:
+							joint_id = joint_id_from_node_name_solver(v_group_name_dic[v_group.group])
+							if joint_id == -1:#存在しないボーンを指してる場合は-1を返されてるので、その場合は飛ばす
+								continue			
+							weights.pop(3)
+							weights.insert(0,v_group.weight)
+							joints.pop(3)
+							joints.insert(0,joint_id)
 						nomalize_fact = sum(weights)
 						try:
 							weights = [weights[i]/nomalize_fact for i in range(4)]

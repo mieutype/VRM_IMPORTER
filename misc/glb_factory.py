@@ -6,6 +6,7 @@ https://opensource.org/licenses/mit-license.php
 """
 from .glb_bin_collector import Glb_bin_collection, Image_bin, Glb_bin
 from ..gl_const import GL_CONSTANS
+from .. import V_Types as VRM_types
 from collections import OrderedDict
 import json
 import struct
@@ -176,11 +177,22 @@ class Glb_obj():
 			v_mat_dic["keywordMap"] = keyword_map = {}
 			v_mat_dic["tagMap"] = tag_map = {}
 			#TODO: vector props
+			def get_prop(material, prop_name, defo):
+				return [*material[prop_name]] if prop_name in material.keys() else defo
 			v_mat_dic["vectorProperties"] = vec_dic = OrderedDict()
 			vec_dic["_Color"] = [*b_mat.diffuse_color,1.0]
-			vec_dic["_ShadeColor"] = [0.3,0.3,0.5,1.0] #TODO: 適切な値を
+			vec_dic["_ShadeColor"] = get_prop(b_mat, "_ShadeColor", [0.3, 0.3, 0.5, 1.0])
+			vec_dic["_EmissionColor"] = get_prop(b_mat, "_EmissionColor", [0.0, 0.0, 0.0, 1.0])
+			vec_dic["_OutlineColor"] = get_prop(b_mat, "_OutlineColor", [0.0, 0.0, 0.0, 1.0])
+			
+			
 			#TODO: float props
 			v_mat_dic["floatProperties"] = float_dic = OrderedDict()
+			for prop in b_mat.keys():
+				if prop in VRM_types.Material_MToon.float_props:
+					if b_mat[prop] == None:
+						continue
+					float_dic[prop] = b_mat[prop]
 			# _BlendMode : 0:Opacue 1:Cutout 2:Transparent 3:TransparentZwrite,
 			# _Src,_Dst(ry): CONST
 			# _ZWrite: 1: true 0:false
@@ -225,22 +237,25 @@ class Glb_obj():
 					print("{} is nothing".format(tex_attr))
 				return 
 			v_mat_dic["textureProperties"] = tex_dic = OrderedDict()
-			MTOON_NORMALMAP = False
+			use_nomalmap = False
 			for slot_id,texslot in enumerate(b_mat.texture_slots):
 				if texslot == None:
 					continue
 				if texslot.use_map_color_diffuse:
 					if texslot.texture_coords == "UV":
-						texuture_prop_add(tex_dic,"_MainTex",slot_id)
-					if texslot.texture_coords == "NORMAL":
+						texuture_prop_add(tex_dic, "_MainTex", slot_id)
+					elif texslot.texture_coords == "NORMAL":
 						texuture_prop_add(tex_dic,"_SphereAdd",slot_id)
-				if texslot.use_map_normal:
+				elif texslot.use_map_normal:
 					texuture_prop_add(tex_dic,"_BumpMap",slot_id)
-					MTOON_NORMALMAP = True
-				if texslot.use_map_emit:
-					texuture_prop_add(tex_dic,"_EmissionMap",slot_id)
+					use_nomalmap = True
+				elif texslot.use_map_emit:
+					texuture_prop_add(tex_dic, "_EmissionMap", slot_id)
+				else:
+					if "role" in texslot.texture.keys():
+						texuture_prop_add(tex_dic,texslot.texture["role"],slot_id)
 
-			keyword_map.update({"_NORMALMAP": MTOON_NORMALMAP})
+			keyword_map.update({"_NORMALMAP": use_nomalmap})
 
 			VRM_material_props_list.append(v_mat_dic)
 			#endregion VRM_mat

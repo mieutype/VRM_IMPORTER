@@ -5,6 +5,8 @@
  - インポートには数十秒程度かかります。しばらく待ってみてください。
 ## 雰囲気でｲﾝﾎﾟｰﾄしたので、間違いがあります。
 ## 変更禁止(CC_ND)VRMは弾く" 仕様 "です悪しからず。
+## attention! for comers from other addon's notice.
+ - This addon is independent project from other addons. 
 ## インストール方法
  - そこの右上の緑のボタンを押してZIP Download
  ｰ blender->User preference->addon -> addon installで先に落としたZipを選ぶ

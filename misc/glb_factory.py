@@ -39,16 +39,16 @@ class Glb_obj():
 
 	def image_to_bin(self):
 		#collect used image
-		used_image = []
+		used_image = set()
 		used_material_set = set()
 		for mesh in [obj for obj in bpy.context.selected_objects if obj.type == "MESH"]:
 			for mat in mesh.data.materials:
 				used_material_set.add(mat)
 		for mat in used_material_set:
 			if mat.texture_slots is not None:
-				used_image += [tex_slot.texture.image for tex_slot in mat.texture_slots if tex_slot is not None]
+				used_image = used_image.union(set([tex_slot.texture.image for tex_slot in mat.texture_slots if tex_slot is not None]))
 		#thumbnail
-		used_image.append(bpy.data.images[self.armature["texture"]])
+		used_image.add(bpy.data.images[self.armature["texture"]])
 
 		for image in used_image:
 			if image.is_dirty:

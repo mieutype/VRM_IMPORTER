@@ -141,75 +141,136 @@ class Blend_model():
         bpy.context.scene.update()
         bpy.ops.object.mode_set(mode='OBJECT')
         return
-        
+    
+    #region material
     def make_material(self, vrm_pydata):
         #Material_datas　適当なので要調整
         self.material_dict = dict()
         for index,mat in enumerate(vrm_pydata.materials):
             b_mat = bpy.data.materials.new(mat.name)
-            b_mat.use_shadeless = True
-            b_mat.diffuse_color = mat.base_color[0:3]
-            if mat.alpha_mode == "OPAQUE":
-                b_mat.use_transparency = False
-            elif mat.alpha_mode == "Z_TRANSPARENCY":
-                b_mat.use_transparency = True
-                b_mat.alpha = 1
-                b_mat.transparency_method = "Z_TRANSPARENCY"
-            elif mat.alpha_mode == "MASK":
-                b_mat.use_transparency = True
-                b_mat.alpha = 1
-                b_mat.transparency_method = "MASK"
-            def texture_add(tex_index,texture_param_dict,slot_param_dict):
-                ts = b_mat.texture_slots.add()
-                ts.texture = tex_index
-                for attr,param in texture_param_dict.items():
-                    setattr(ts.texture,attr,param)
-                for attr,param in slot_param_dict.items():
-                    setattr(ts,attr,param)
-                return
-            if mat.color_texture_index is not None:
-                texture_param_dict = {}
-                slot_param_dict = {
-                    "texture_coords":"UV",
-                    "uv_layer":"TEXCOORD_{}".format(mat.color_texcoord_index),
-                    "use_map_alpha":True,
-                    "blend_type":"MULTIPLY"
-                    }
-                texture_add(self.textures[mat.color_texture_index],texture_param_dict,slot_param_dict)
-            if mat.normal_texture_index is not None:
-                texture_param_dict = {
-                    "use_normal_map":True,
-                }
-                slot_param_dict = {
-                    "texture_coords":"UV",
-                    "uv_layer":"TEXCOORD_{}".format(mat.normal_texcoord_index),
-                    "blend_type":"MIX",
-                    "use_map_color_diffuse":False,
-                    "use_map_normal":True
-                    }
-                texture_add(self.textures[mat.normal_texture_index],texture_param_dict,slot_param_dict)
-            if hasattr(mat,"sphere_texture_index"):
-                texture_param_dict = {}
-                slot_param_dict = {
-                    "texture_coords":"NORMAL",
-                    "blend_type":"ADD"
-                    }
-                texture_add(self.textures[mat.sphere_texture_index],texture_param_dict,slot_param_dict)
-            #FIXME blenderのemissionは光量のmap、Mtoonのemissionは光色
-            if hasattr(mat,"emission_texture_index"):
-                texture_param_dict = {}
-                slot_param_dict = {
-                    "texture_coords":"UV",
-                    "uv_layer":"TEXCOORD_{}".format(mat.color_texcoord_index),
-                    "use_map_color_diffuse":False,
-                    "use_map_emit":True,
-                    "blend_type":"ADD"
-                    }
-                texture_add(self.textures[mat.emission_texture_index],texture_param_dict,slot_param_dict)
+            b_mat.use_shadeless = True #分かりやすさ重視
+            if type(mat) == VRM_Types.Material_GLTF:
+                self.build_material_from_GLTF(b_mat, mat)
+            if type(mat) == VRM_Types.Material_MToon:
+                self.build_material_from_MToon(b_mat, mat)
+            if type(mat) == VRM_Types.Material_Transparent_Z_write:
+                self.build_material_from_Transparent_Z_write
             self.material_dict[index] = b_mat
-        for mat in self.material_dict.values():
-            print(mat.name)
-        return 
+        return
+
+    def set_material_transparent(self,b_mat, transparent_mode):
+        if transparent_mode == "OPAQUE":
+            b_mat.use_transparency = False
+        elif transparent_mode == "Z_TRANSPARENCY":
+            b_mat.use_transparency = True
+            b_mat.alpha = 1
+            b_mat.transparency_method = "Z_TRANSPARENCY"
+        elif transparent_mode == "MASK":
+            b_mat.use_transparency = True
+            b_mat.alpha = 1
+            b_mat.transparency_method = "MASK"
+        return
+
+    def texture_add(self,b_mat,b_texture,texture_param_dict,slot_param_dict):
+        ts = b_mat.texture_slots.add()
+        ts.texture = b_texture
+        for attr,param in texture_param_dict.items():
+            setattr(ts.texture,attr,param)
+        for attr,param in slot_param_dict.items():
+            setattr(ts,attr,param)
+        return ts
+
+    def texture_add_helper(self, b_mat, texture_id, mapping, uv_layer_num=0,
+                            texture_param_dict = None, slot_param_dict=None):
+        if texture_id == None:
+            return
+        b_texture = self.textures[texture_id]
+        texture_param_dict = {} if texture_param_dict == None else texture_param_dict
+        slot_param_dict = {} if slot_param_dict == None else slot_param_dict
+        slot_param_dict.update({"texture_coords": mapping})
+        if mapping == "UV":
+            slot_param_dict.update({"uv_layer": "TEXCOORD_{}".format(uv_layer_num)})
+        tex_slot = self.texture_add(b_mat, b_texture, texture_param_dict, slot_param_dict)
+        return tex_slot
+
+    def color_texture_add(self, b_mat, texture_index, uv_layer_index):
+        self.texture_add_helper(
+            b_mat, texture_index,
+            "UV", uv_layer_index, None,
+            {"use_map_alpha": True, "blend_type": "MULTIPLY"}
+            )
+    def normal_texture_add(self, b_mat, texture_index, uv_layer_index):
+        self.texture_add_helper(
+            b_mat, texture_index,
+            "UV", uv_layer_index,
+            {"use_normal_map": True},
+            {"blend_type": "MIX",
+            "use_map_color_diffuse":False,
+            "use_map_normal": True})
+
+    def un_affect_texture_add(self, b_mat, texture_index, uv_layer_index, role):
+        ts = self.texture_add_helper(
+            b_mat,texture_index,
+            "UV", uv_layer_index,
+            None,
+            {"use_map_color_diffuse": False})
+        if ts is not None:
+            if "role" in ts.texture:
+                print("{} texture's role :{}: is over written".format(ts.texture.name,role))             
+            ts.texture["role"] = role
+
+    def build_material_from_GLTF(self, b_mat, pymat):
+        b_mat.use_shadeless = pymat.shadeless
+        b_mat.diffuse_color = pymat.base_color[0:3]
+        self.set_material_transparent(b_mat, pymat.alphaMode)
+
+        self.color_texture_add(
+            b_mat, pymat.color_texture_index,
+            pymat.color_texcoord_index)
+        
+        self.texture_add_helper(
+            b_mat, pymat.normal_texture_index,
+            pymat.normal_texture_texcoord_index)
+        return
+
+    def build_material_from_MToon(self, b_mat, pymat):
+        for k, v in pymat.float_props_dic.items():
+            b_mat[k] = v
+        for tex_name, tex_index in pymat.texture_index_dic.items():
+            if tex_name == "_MainTex":
+                self.color_texture_add(b_mat, tex_index, 0)
+            elif tex_name == "_BumpMap":
+                self.normal_texture_add(b_mat, tex_index, 0)
+            elif tex_name == "_SphereAdd":
+                self.texture_add_helper(b_mat, tex_index, "NORMAL", None, {}, {"blend_type": "ADD"})
+            else:
+                self.un_affect_texture_add(b_mat, tex_index, 0, tex_name)
+        for k, v in pymat.vector_props_dic.items():
+            if k == "_Color":
+                b_mat.diffuse_color = v[0:3]
+            else:
+                b_mat[k] = v
+        for k, v in pymat.keyword_dic.items():
+            b_mat[k] = v
+        transparant_exchange_dic = {"Opaque":"OPAQUE","TransparentCutout":"MASK","Transparent":"Z_TRANSPARENCY"}
+        self.set_material_transparent(b_mat,transparant_exchange_dic[pymat.tag_dic["RenderType"]])
+
+    def build_material_from_Transparent_Z_write(self, b_mat, pymat):
+        for k, v in pymat.float_props_dic.items():
+            b_mat[k] = v
+        for tex_name, tex_index in pymat.texture_index_dic.items():
+            if tex_name == "_MainTex":
+                self.color_texture_add(b_mat, tex_index, 0)
+        for k, v in pymat.vector_props_dic.items():
+            if k == "_Color":
+                b_mat.diffuse_color = v[0:3]
+            else:
+                b_mat[k] = v
+        self.set_material_transparent(b_mat,"Z_TRANSPARENCY")          
+        return                
+
+    #endregion material
+
 
     def make_primitive_mesh_objects(self, vrm_pydata):
         self.primitive_obj_dict = {pymesh.object_id:[] for pymesh in vrm_pydata.meshes}

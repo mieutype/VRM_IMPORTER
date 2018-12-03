@@ -78,6 +78,7 @@ def menu_export(self, context):
 
 
 class VRM_IMPORTER_UI_controller(bpy.types.Panel):
+    bl_idname = "icyp_ui_controller"
     bl_label = "vrm import helper"
     #どこに置くかの定義
     bl_space_type = "VIEW_3D"

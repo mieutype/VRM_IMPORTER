@@ -58,15 +58,125 @@ class Material(object):
     def __init__(self):
         self.name = ""
         self.shader_name = ""
-        self.base_color = (1,1,1,1)
+
+
+
+class Material_GLTF(Material):
+    def __init__(self):
+        super().__init__()
         self.color_texture_index = None
-        self.color_texcoord_index = None
+        self.color_texcood_index = None
+        self.base_color = None
+        self.metallic_factor = None
+        self.roughnessFactor = None
+        self.emissiveFactor = None
+        self.metallic_roughness_texture_index = None
+        self.metallic_roughness_texture_texcood = None
         self.normal_texture_index = None
-        self.normal_texcoord_index = None
-        self.displace_texture_index = None
-        self.displace_texcoord_index = None
-        self.alpha_mode = "Z_TRANSPARENCY"
-        self.doubleSided = True
+        self.normal_texture_texcoord_index = None
+        self.emissive_texture_index = None
+        self.emissive_texture_texcoord_index = None
+        self.occlusion_texture_index = None
+        self.occlusion_texture_texcood_index = None
+        self.double_sided = None
+        self.alphaMode = "OPAQUE"
+        self.shadeless = False
+
+
+class Material_Transparent_Z_write(Material):
+    float_props = [
+            "_MainTex",
+            "_Cutoff",
+            "_BlendMode",
+            "_CullMode",
+            "_VColBlendMode",
+            "_SrcBlend",
+            "_DstBlend",
+            "_ZWrite",
+            ]
+    texture_index_list = [
+        "_MainTex"
+        ]
+    vector_props = [
+        "_Color"
+        ]
+
+    def __init__(self):
+        super().__init__()
+        self.float_prop_dic = {prop: None for prop in self.float_props}
+        self.vector_props_dic = {prop: None for prop in self.vector_props}
+        self.texture_index_dic = {tex:None for tex in self.texture_index_list}
+
+
+
+class Material_MToon(Material):
+    float_props = [
+        "_Cutoff",
+        "_BumpScale",
+        "_ReceiveShadowRate",
+        "_ShadeShift",
+        "_ShadeToony",
+        "_ShadingGradeRate",
+        "_LightColorAttenuation",
+        "_IndirectLightIntensity",
+        "_OutlineWidth",
+        "_OutlineScaledMaxDistance",
+        "_OutlineLightingMix",
+        "_DebugMode",
+        "_BlendMode",
+        "_OutlineWidthMode",
+        "_OutlineColorMode",
+        "_CullMode",
+        "_OutlineCullMode",
+        "_SrcBlend",
+        "_DstBlend",
+        "_ZWrite",
+        "_IsFirstSetup"
+        ]
+
+    texture_index_list = [
+        "_MainTex",#use in BI
+        "_ShadeTexture",
+        "_BumpMap",#use in BI
+        "_ReceiveShadowTexture",
+        "_ShadingGradeTexture",
+        "_EmissionMap",
+        "_SphereAdd",#use in BI
+        "_OutlineWidthTexture"
+        ]
+    vector_props = [
+        "_Color",
+        "_EmissionColor",
+        "_OutlineColor",
+        "_ShadeColor"
+        ]
+    #texture offset and scaling props by texture
+    vector_props.extend(texture_index_list)
+
+    keyword_list = [
+        "_NORMALMAP",
+        "_ALPHATEST_ON",
+        "_ALPHABLEND_ON",
+        "_ALPHAPREMULTIPLY_ON",
+        "MTOON_OUTLINE_WIDTH_WORLD",
+        "MTOON_OUTLINE_WIDTH_SCREEN",
+        "MTOON_OUTLINE_COLOR_FIXED",
+        "MTOON_OUTLINE_COLOR_MIXED",
+        "MTOON_DEBUG_NORMAL",
+        "MTOON_DEBUG_LITSHADERATE"
+    ]
+    tagmap_list = [
+        "RenderType"
+    ]
+
+    def __init__(self):
+        super().__init__()
+        self.float_props_dic = {prop:None for prop in self.float_props}
+        self.vector_props_dic = {prop:None for prop in self.vector_props}
+        self.texture_index_dic = {prop: None for prop in self.texture_index_list}
+        self.keyword_dic = {kw:False for kw in self.keyword_list}
+        self.tag_dic = {tag:None for tag in self.tagmap_list}
+        
 
 if "__main__" == __name__:
     pass

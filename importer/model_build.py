@@ -148,7 +148,8 @@ class Blend_model():
         self.material_dict = dict()
         for index,mat in enumerate(vrm_pydata.materials):
             b_mat = bpy.data.materials.new(mat.name)
-            b_mat.use_shadeless = True #分かりやすさ重視
+            b_mat.use_shadeless = True  #分かりやすさ重視
+            b_mat["shader_name"] = mat.shader_name
             if type(mat) == VRM_Types.Material_GLTF:
                 self.build_material_from_GLTF(b_mat, mat)
             if type(mat) == VRM_Types.Material_MToon:
@@ -494,10 +495,10 @@ class Blend_model():
             for obj in objs:
                 obj.select = True
             bpy.ops.object.join()
-            bpy.ops.object.select_all(action="DESELECT")
             for unused_mesh in [obj.data for obj in objs[1:]]:
                 bpy.data.meshes.remove(unused_mesh)
             self.mesh_joined_objects.append(bpy.context.active_object)
+            bpy.ops.object.select_all(action="DESELECT")
         return
 
     def axis_transform(self):

@@ -489,9 +489,9 @@ class Glb_obj():
 		for key in vrm_metas:
 			vrm_meta_dic[key] = self.armature[key] if key in self.armature.keys() else ""
 		if "texture" in self.armature.keys():
-			thumnail_index_list =[i for i,img in enumerate(self.glb_bin_collector.image_bins) if img.name == self.armature["texture"]]
-			if len(thumnail_index_list) > 0 :
-				vrm_meta_dic["texture"] = thumnail_index_list[0]
+			thumbnail_index_list =[i for i,img in enumerate(self.glb_bin_collector.image_bins) if img.name == self.armature["texture"]]
+			if len(thumbnail_index_list) > 0 :
+				vrm_meta_dic["texture"] = thumbnail_index_list[0]
 		#endregion meta
 		#region humanoid
 		vrm_extension_dic["humanoid"] = vrm_humanoid_dic = {"humanBones":[]}
@@ -521,11 +521,20 @@ class Glb_obj():
 		#meshを名前からid
         #weightを0-1から0-100に
         #shape_indexを名前からindexに
+		def clamp(min,val,max):
+			if max >= val:
+				if val >= min:return val
+				else:
+					print("blendshapeGroup weight is between 0 - 1, value is {}".format(val))
+					return min
+			else:
+				print("blendshapeGroup weight is between 0 - 1, value is {}".format(val))
+				return max
 		for bsm in BSM_list:
 			for bind in bsm["binds"]:
 				bind["mesh"] = [i for i,mesh in enumerate(self.json_dic["meshes"]) if mesh["name"]==bind["mesh"]][0]
 				bind["index"] = self.json_dic["meshes"][bind["mesh"]]["primitives"][0]["extras"]["targetNames"].index(bind["index"])
-				bind["weight"] = bind["weight"]*100
+				bind["weight"] = clamp(0, bind["weight"]*100, 100)
 		vrm_BSM_dic["blendShapeGroups"] = BSM_list
 		#endregion blendShapeMaster
 
@@ -577,6 +586,8 @@ class Glb_obj():
 			"scale":[1.0,1.0,1.0]
 		})
 		self.json_dic["scenes"][0]["nodes"].append(len(self.json_dic["nodes"])-1)
+		return
+
 
 	def finalize(self):
 		bin_json, self.bin = self.glb_bin_collector.pack_all()

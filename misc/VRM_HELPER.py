@@ -71,15 +71,11 @@ class VRM_VALIDATOR(bpy.types.Operator):
         node_name_set = set()
         for obj in bpy.context.selected_objects:
             if obj.name in node_name_set:
-                print("VRM exporter need Nodes(mesh,bones) name is unique")
+                print("VRM exporter need Nodes(mesh,bones) name is unique. {} is duplicated.".format(obj.name))
             node_name_set.add(obj.name)
             if obj.type != "EMPTY" and (obj.parent is not None and obj.parent.type != "ARMATURE" and obj.type == "MESH"):
                 if obj.location != Vector([0.0,0.0,0.0]):#mesh and armature origin is on [0,0,0]
                     print("There are not on origine location object {}".format(obj.name))
-            if obj.type == "MESH":
-                for poly in obj.data.polygons:
-                    if poly.loop_total > 3:#polygons need all triangle
-                        print("There are non Triangle faces in {}".format(obj.name))
             if obj.type == "ARMATURE":
                 armature = obj
                 armature_count += 1
@@ -88,7 +84,7 @@ class VRM_VALIDATOR(bpy.types.Operator):
                 already_root_bone_exist = False
                 for bone in obj.data.bones:
                     if bone.name in node_name_set:#nodes name is unique
-                        print("VRM exporter need Nodes(mesh,bones) name is unique")
+                        print("VRM exporter need Nodes(mesh,bones) name is unique. {} is duplicated".format(bone.name))
                     node_name_set.add(bone.name)
                     if bone.parent == None: #root bone is only 1
                         if already_root_bone_exist:
@@ -123,6 +119,13 @@ class VRM_VALIDATOR(bpy.types.Operator):
                 "rightLittleProximal","rightLittleIntermediate","rightLittleDistal"
                 ]
 
+            if obj.type == "MESH":
+                if len(obj.data.materials) == 0:
+                    print("There is no material in mesh {}".format(obj.name))
+                for poly in obj.data.polygons:
+                    if poly.loop_total > 3:#polygons need all triangle
+                        print("There are not Triangle faces in {}".format(obj.name))
+                #TODO modifier applyed, vertex weight Bone exist, vertex weight numbers.
         used_image = []
         used_material_set = set()
         for mesh in [obj for obj in bpy.context.selected_objects if obj.type == "MESH"]:
@@ -132,9 +135,13 @@ class VRM_VALIDATOR(bpy.types.Operator):
             if mat.texture_slots is not None:
 	            used_image += [tex_slot.texture.image for tex_slot in mat.texture_slots if tex_slot is not None]
 		#thumbnail
-        used_image.append(bpy.data.images[armature["texture"]])
+        try:
+            used_image.append(bpy.data.images[armature["texture"]])
+        except:
+            pass
         for img in used_image:
             if img.is_dirty:
                 print("{} is not saved, please save.".format(img.name))
+        #TODO textblock_validate
         print("validation finished")
         return {"FINISHED"}

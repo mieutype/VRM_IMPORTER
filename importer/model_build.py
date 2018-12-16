@@ -13,7 +13,6 @@ from math import sqrt,pow
 import numpy
 import json,copy
 
-
 class Blend_model():
     def __init__(self,vrm_pydata,is_put_spring_bone_info):
         self.textures = None

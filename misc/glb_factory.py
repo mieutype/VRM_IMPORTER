@@ -244,13 +244,21 @@ class Glb_obj():
 				if texslot.use_map_color_diffuse:
 					if texslot.texture_coords == "UV":
 						texuture_prop_add(tex_dic, "_MainTex", slot_id)
+						if not "_MainTex" in vec_dic:
+							vec_dic["_MainTex"] = [0,0,1,1]
 					elif texslot.texture_coords == "NORMAL":
 						texuture_prop_add(tex_dic,"_SphereAdd",slot_id)
+						if not "_SphereAdd" in vec_dic:
+							vec_dic["_SphereAdd"] = [0,0,1,1]
 				elif texslot.use_map_normal:
 					texuture_prop_add(tex_dic,"_BumpMap",slot_id)
 					use_nomalmap = True
+					if not "_BumpMap" in vec_dic:
+						vec_dic["_BumpMap"] = [0,0,1,1]
 				elif texslot.use_map_emit:
 					texuture_prop_add(tex_dic, "_EmissionMap", slot_id)
+					if not "_EmissionMap" in vec_dic:
+						vec_dic["_EmissionMap"] = [0,0,1,1]
 				else:
 					if "role" in texslot.texture.keys():
 						texuture_prop_add(tex_dic,texslot.texture["role"],slot_id)

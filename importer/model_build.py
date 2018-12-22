@@ -253,8 +253,8 @@ class Blend_model():
                 b_mat[k] = v
         for k, v in pymat.keyword_dic.items():
             b_mat[k] = v
-        transparant_exchange_dic = {"Opaque":"OPAQUE","TransparentCutout":"MASK","Transparent":"Z_TRANSPARENCY"}
-        self.set_material_transparent(b_mat,transparant_exchange_dic[pymat.tag_dic["RenderType"]])
+        transparant_exchange_dic = {0:"OPAQUE",1:"MASK",2:"Z_TRANSPARENCY",3:"Z_TRANSPARENCY"}#Trans_Zwrite(3)も2扱いで。
+        self.set_material_transparent(b_mat,transparant_exchange_dic[pymat.float_props_dic["_BlendMode"]])
 
     def build_material_from_Transparent_Z_write(self, b_mat, pymat):
         for k, v in pymat.float_props_dic.items():

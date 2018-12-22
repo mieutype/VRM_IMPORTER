@@ -76,6 +76,7 @@ def material(mat,ext_mat,textures)->VRM_Types.Material:
     else:#"MToon or Transparent_Zwrite"
         if ext_mat["shader"] == "VRM/MToon":
             v_mat = VRM_Types.Material_MToon()
+            v_mat.name = ext_mat["name"]
             v_mat.shader_name = ext_mat["shader"]
             #region check unknown props exist
             subset = {

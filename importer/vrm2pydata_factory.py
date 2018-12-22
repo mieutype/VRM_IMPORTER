@@ -9,7 +9,10 @@ from .. import V_Types as VRM_Types
 
 def bone(node)->VRM_Types.Node:
     v_node = VRM_Types.Node()
-    v_node.name = node["name"]
+    if "name" in node:
+        v_node.name = node["name"]
+    else:
+        v_node.name = "tmp"
     v_node.position = node["translation"]
     v_node.rotation = node["rotation"]
     v_node.scale = node["scale"]

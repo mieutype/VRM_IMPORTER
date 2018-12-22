@@ -90,6 +90,7 @@ class Blend_model():
                             li.append(ch)
                     return
                 b = self.armature.data.edit_bones.new(py_bone.name)
+                py_bone.name = b.name
                 py_bone.blend_bone = b
                 if parent_id == -1:
                     parent_pos = [0,0,0]

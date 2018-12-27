@@ -279,6 +279,7 @@ class Glb_obj():
 			if is_skin_mesh:
 				node_dic["skin"] = 0 #TODO:　決め打ちってどうよ：一体のモデルなのだから２つもあっては困る(から決め打ち(やめろ(やだ))
 			self.json_dic["nodes"].append(node_dic)
+			
 			mesh_node_id = len(self.json_dic["nodes"])-1
 
 			if is_skin_mesh:
@@ -289,8 +290,8 @@ class Glb_obj():
 					parent_node["children"].append(mesh_node_id)
 				else:
 					parent_node["children"] = [mesh_node_id]
-					relate_pos = [mesh.location[i] - self.armature.data.bones[mesh.parent_bone].head_local[i] for i in range(3)]
-					self.json_dic["nodes"][mesh_node_id]["translation"] = self.axis_blender_to_glb(relate_pos)
+				relate_pos = [mesh.location[i] - self.armature.data.bones[mesh.parent_bone].head_local[i] for i in range(3)]
+				self.json_dic["nodes"][mesh_node_id]["translation"] = self.axis_blender_to_glb(relate_pos)
 			#region hell
 			bpy.ops.object.mode_set(mode='OBJECT')
 			mesh.hide = False

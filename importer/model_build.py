@@ -94,9 +94,7 @@ class Blend_model():
                             li.append(ch)
                     return
                 if py_bone.mesh_id is not None and py_bone.children is None:
-                    print(py_bone.name+" is not node")
                     return  #子がなく、mesh属性を持つnodeはboneを生成しない
-                print(py_bone.name +" is node") 
                 b = self.armature.data.edit_bones.new(py_bone.name)
                 py_bone.name = b.name
                 py_bone.blend_bone = b

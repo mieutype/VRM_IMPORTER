@@ -309,7 +309,11 @@ class Blend_model():
                         obj.parent_type = "BONE"
                         obj.parent_bone = self.armature.data.bones[vrm_pydata.nodes_dict[parent_id].name].name
                         #boneのtail側にparentされるので、根元からmesh nodeのpositionに動かしなおす
-                        obj.location = node[0].position
+                        #obj.location = node[0].position
+                        obj.matrix_world =  Matrix.Translation([self.armature.matrix_world.to_translation()[i]  \
+                                            + self.armature.data.bones[obj.parent_bone].matrix_local.to_translation()[i] \
+                                            + node[0].position[i] for i in range(3)] )
+
                         #obj.rotation_euler[2] = numpy.deg2rad(90)
                         #bpy.ops.object.transform_apply(rotation=True)
                         
@@ -520,6 +524,7 @@ class Blend_model():
 
     def axis_transform(self):
         #axis armature->>objの順でやらないと不具合
+        bpy.ops.object.select_all(action="DESELECT")
         bpy.context.scene.objects.active = self.armature
         self.armature.select = True
         self.armature.rotation_mode = "XYZ"

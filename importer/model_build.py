@@ -9,7 +9,7 @@ https://opensource.org/licenses/mit-license.php
 import bpy, bmesh
 from mathutils import Vector,Matrix
 from .. import V_Types as VRM_Types
-from math import sqrt,pow
+from math import sqrt,pow,radians
 import numpy
 import json,copy
 
@@ -308,8 +308,12 @@ class Blend_model():
                         obj.parent = self.armature
                         obj.parent_type = "BONE"
                         obj.parent_bone = self.armature.data.bones[vrm_pydata.nodes_dict[parent_id].name].name
-                        #boneのtail側にparentされるので、根元からmesh nodeのpositionに動かす
-                        obj.matrix_world = self.armature.matrix_world * Matrix.Translation(node[0].position) * self.armature.data.bones[obj.parent_bone].matrix_local
+                        #boneのtail側にparentされるので、根元からmesh nodeのpositionに動かしなおす
+                        obj.location = node[0].position
+                        #obj.rotation_euler[2] = numpy.deg2rad(90)
+                        #bpy.ops.object.transform_apply(rotation=True)
+                        
+
             
             # vertex groupの作成
             if origin != None:

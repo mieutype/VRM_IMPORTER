@@ -74,11 +74,15 @@ class Blend_model():
         self.armature = bpy.context.object
         self.armature.name = "skelton"
         self.bones = dict()
-        def bone_chain(id,parent_id):
+        def bone_chain(self_and_parent_id_tuple):
+            id = self_and_parent_id_tuple[0]
+            parent_id = self_and_parent_id_tuple[1]
+
             if id == -1:#自身がrootのrootの時
                 pass
             else:
                 py_bone = vrm_pydata.nodes_dict[id]
+                print("pybone name is "+py_bone.name+" .")
                 if py_bone.blend_bone:#すでにインスタンス化済みのボーンが出てきたとき。
                     li = [py_bone.blend_bone]
                     while li:
@@ -89,6 +93,10 @@ class Blend_model():
                         for ch in bo.children:
                             li.append(ch)
                     return
+                if py_bone.mesh_id is not None and py_bone.children is None:
+                    print(py_bone.name+" is not node")
+                    return  #子がなく、mesh属性を持つnodeはboneを生成しない
+                print(py_bone.name +" is node") 
                 b = self.armature.data.edit_bones.new(py_bone.name)
                 py_bone.name = b.name
                 py_bone.blend_bone = b
@@ -131,12 +139,13 @@ class Blend_model():
                     b.parent = self.bones[parent_id]
                 if py_bone.children != None:
                         for x in py_bone.children:
-                            bone_chain(x,id)
+                            bone_nodes.append((x,id))
             return 0
         root_node_set = list(set(vrm_pydata.skins_root_node_list))
         root_nodes =  root_node_set if root_node_set else [node for scene in vrm_pydata.json["scenes"] for node in scene["nodes"]] 
-        while len(root_nodes):
-            bone_chain(root_nodes.pop(),-1)
+        bone_nodes = [(root_node,-1) for root_node in root_nodes]
+        while len(bone_nodes):
+            bone_chain(bone_nodes.pop())
         #call when bone built    
         bpy.context.scene.update()
         bpy.ops.object.mode_set(mode='OBJECT')
@@ -286,17 +295,23 @@ class Blend_model():
             #kuso of kuso kakugosiro
             #origin 0:Vtype_Node 1:mesh 2:skin
             origin = None
-            for key,node in vrm_pydata.origine_nodes_dict.items():
+            for key_is_node_id,node in vrm_pydata.origine_nodes_dict.items():
                 if node[1] == pymesh.object_id:
                     obj.location = node[0].position #origin boneの場所に移動
                     if len(node) == 3:
                         origin = node
-                    else:#len=2 ≒ skinがない場合
+                    else:  #len=2 ≒ skinがない場合
+                        parent_id = None
+                        for id, py_node in vrm_pydata.nodes_dict.items():
+                            if py_node.children is None:
+                                continue
+                            if key_is_node_id in py_node.children:
+                                parent_id = id
                         obj.parent = self.armature
                         obj.parent_type = "BONE"
-                        obj.parent_bone = node[0].name
-                        #boneのtail側にparentされるので、根元に動かす
-                        obj.location = numpy.array(self.bones[key].head) - numpy.array(self.bones[key].tail)
+                        obj.parent_bone = self.armature.data.bones[vrm_pydata.nodes_dict[parent_id].name].name
+                        #boneのtail側にparentされるので、根元からmesh nodeのpositionに動かす
+                        obj.matrix_world = self.armature.matrix_world * Matrix.Translation(node[0].position) * self.armature.data.bones[obj.parent_bone].matrix_local
             
             # vertex groupの作成
             if origin != None:
@@ -322,7 +337,7 @@ class Blend_model():
                             if w[1] != 0.0:
                                 #頂点はまとめてﾘｽﾄで追加できるようにしかなってない
                                 vg.add([w[0]], w[1], 'REPLACE')
-            obj.modifiers.new("amt","ARMATURE").object = self.armature
+                obj.modifiers.new("amt","ARMATURE").object = self.armature
 
             #end of kuso
             scene = bpy.context.scene

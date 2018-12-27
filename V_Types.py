@@ -42,6 +42,8 @@ class Node(object):
         self.scale = None
         self.children = None
         self.blend_bone = None
+        self.mesh_id = None
+        self.skin_id = None
 
 
 

@@ -23,6 +23,10 @@ def bone(node)->VRM_Types.Node:
             v_node.children = node["children"]
     else:
         v_node.children = None
+    if "mesh" in node:
+        v_node.mesh_id = node["mesh"]
+    if "skin" in node:
+        v_node.skin_id = node["skin"]
     return v_node
 
 

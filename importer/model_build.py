@@ -531,6 +531,7 @@ class Blend_model():
             if obj.parent_type == 'BONE':#ボーンにくっ付いて動くのは無視:なんか吹っ飛ぶ髪の毛がいる?
                 bpy.ops.object.transform_apply(rotation=True)
                 print("bone parent object {}".format(obj.name))
+                obj.select = False
                 continue
             obj.rotation_mode = "XYZ"
             obj.rotation_euler[0] = numpy.deg2rad(90)

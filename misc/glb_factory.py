@@ -292,6 +292,7 @@ class Glb_obj():
 					parent_node["children"] = [mesh_node_id]
 				relate_pos = [mesh.location[i] - self.armature.data.bones[mesh.parent_bone].head_local[i] for i in range(3)]
 				self.json_dic["nodes"][mesh_node_id]["translation"] = self.axis_blender_to_glb(relate_pos)
+
 			#region hell
 			bpy.ops.object.mode_set(mode='OBJECT')
 			mesh.hide = False

@@ -196,30 +196,24 @@ class Glb_obj():
 			# _BlendMode : 0:Opacue 1:Cutout 2:Transparent 3:TransparentZwrite,
 			# _Src,_Dst(ry): CONST
 			# _ZWrite: 1: true 0:false
+			def material_prop_setter(blend_mode, \
+									 src_blend, dst_blend, \
+									 z_write, alphatest, \
+									 render_queue, render_type):
+				float_dic["_BlendMode"] = blend_mode
+				float_dic["_SrcBlend"] = src_blend
+				float_dic["_DstBlend"] = dst_blend
+				float_dic["_ZWrite"] = z_write
+				keyword_map.update({"_ALPHATEST_ON": alphatest})
+				v_mat_dic["renderQueue"] = render_queue
+				tag_map["RenderType"] = render_type
+
 			if not b_mat.use_transparency:
-				float_dic["_BlendMode"] = 0
-				float_dic["_SrcBlend"] = 1
-				float_dic["_DstBlend"] = 0
-				float_dic["_ZWrite"] = 1
-				keyword_map.update({"_ALPHATEST_ON": False})
-				v_mat_dic["renderQueue"] = -1
-				tag_map["RenderType"] = "Opaque"
+				material_prop_setter(0,1,0,1,False,-1,"Opaque")
 			elif b_mat.transparency_method == "MASK":
-				float_dic["_BlendMode"] = 1
-				float_dic["_SrcBlend"] = 1
-				float_dic["_DstBlend"] = 0
-				float_dic["_ZWrite"] = 1
-				keyword_map.update({"_ALPHATEST_ON": True})
-				v_mat_dic["renderQueue"] = 2450
-				tag_map["RenderType"] = "TransparentCutout"
-			else :#transparent and Z_TRANPARENCY or Raytrace 
-				float_dic["_BlendMode"] = 3
-				float_dic["_SrcBlend"] = 5
-				float_dic["_DstBlend"] = 10
-				float_dic["_ZWrite"] = 1
-				keyword_map.update({"_ALPHATEST_ON": True})
-				v_mat_dic["renderQueue"] = 3000
-				tag_map["RenderType"] = "Transparent"
+				material_prop_setter(1,1,0,1,True,2450,"TransparentCutout")
+			else:  #transparent and Z_TRANPARENCY or Raytrace
+				material_prop_setter(3,5,10,1,True,3000,"Transparent")
 			keyword_map.update({"_ALPHABLEND_ON": b_mat.use_transparency})
 			keyword_map.update({"_ALPHAPREMULTIPLY_ON":False})
 			

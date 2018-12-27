@@ -138,13 +138,13 @@ class Material_MToon(Material):
 
     texture_index_list = [
         "_MainTex",#use in BI
-        "_ShadeTexture",
+        "_ShadeTexture",#ignore in BI
         "_BumpMap",#use in BI
-        "_ReceiveShadowTexture",
-        "_ShadingGradeTexture",
-        "_EmissionMap",
+        "_ReceiveShadowTexture",#ignore in BI
+        "_ShadingGradeTexture",#ignore in BI
+        "_EmissionMap",#ignore in BI
         "_SphereAdd",#use in BI
-        "_OutlineWidthTexture"
+        "_OutlineWidthTexture"#ignore in BI
         ]
     vector_props = [
         "_Color",

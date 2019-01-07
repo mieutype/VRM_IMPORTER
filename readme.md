@@ -1,7 +1,7 @@
 # MIT　license　
 # Draco圧縮 非 対 応 
 # Blender2.80向けはこっち (for Blender2.8 is below)
-https://github.com/iCyP/VRM_IMPORTER_for_Blender2.8
+https://github.com/iCyP/VRM_IMPORTER_for_Blender2_8
 # 注意
 ## インポートボタン押したら固まったんだけど？？？
  - インポートには数十秒程度かかります。しばらく待ってみてください。

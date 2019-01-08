@@ -8,6 +8,7 @@ from .glb_bin_collector import Glb_bin_collection, Image_bin, Glb_bin
 from ..gl_const import GL_CONSTANS
 from .. import V_Types as VRM_types
 from collections import OrderedDict
+from math import pow
 import json
 import struct
 from sys import float_info
@@ -149,8 +150,9 @@ class Glb_obj():
 			#region pbr_mat
 			mat_dic = {"name":b_mat.name}
 			
-			mat_dic["pbrMetallicRoughness"]= {
-                "baseColorFactor":[*b_mat.diffuse_color,1.0],
+			mat_dic["pbrMetallicRoughness"] = {
+				#gammma correction
+                "baseColorFactor":[*[pow(v,1/2.2) for v in b_mat.diffuse_color],1.0],
                 "metallicFactor": 0,
                 "roughnessFactor": 0.9
             }
@@ -180,7 +182,7 @@ class Glb_obj():
 			def get_prop(material, prop_name, defo):
 				return [*material[prop_name]] if prop_name in material.keys() else defo
 			v_mat_dic["vectorProperties"] = vec_dic = OrderedDict()
-			vec_dic["_Color"] = [*b_mat.diffuse_color,1.0]
+			vec_dic["_Color"] = [*[pow(v,1/2.2) for v in b_mat.diffuse_color],1.0]
 			vec_dic["_ShadeColor"] = get_prop(b_mat, "_ShadeColor", [0.3, 0.3, 0.5, 1.0])
 			vec_dic["_EmissionColor"] = get_prop(b_mat, "_EmissionColor", [0.0, 0.0, 0.0, 1.0])
 			vec_dic["_OutlineColor"] = get_prop(b_mat, "_OutlineColor", [0.0, 0.0, 0.0, 1.0])

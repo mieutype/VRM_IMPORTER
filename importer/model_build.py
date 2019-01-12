@@ -513,11 +513,12 @@ class Blend_model():
         bpy.ops.object.select_all(action="DESELECT")
         for objs in self.primitive_obj_dict.values():
             bpy.context.scene.objects.active = objs[0]
+            unused_mesh_names = [obj.data.name for obj in objs[1:]]
             for obj in objs:
                 obj.select = True
             bpy.ops.object.join()
-            for unused_mesh in [obj.data for obj in objs[1:]]:
-                bpy.data.meshes.remove(unused_mesh)
+            for unused_mesh_name in unused_mesh_names:
+                bpy.data.meshes.remove(bpy.data.meshes[unused_mesh_name])
             self.mesh_joined_objects.append(bpy.context.active_object)
             bpy.ops.object.select_all(action="DESELECT")
         return

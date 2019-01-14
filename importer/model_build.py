@@ -227,9 +227,19 @@ class Blend_model():
                 print("{} texture's role :{}: is over written".format(ts.texture.name,role))             
             ts.texture["role"] = role
 
+    def sRGB_to_linear_color(self, color):
+        gamma_color = [0,0,0]
+        for i, c in enumerate(color):
+            if c < 0.04045:
+                gamma_color[i] = c / 12.92
+            else:
+                gamma_color[i] = pow((c+0.055)/1.055,2.4)
+        print(color,gamma_color)
+        return gamma_color
+
     def build_material_from_GLTF(self, b_mat, pymat):
         b_mat.use_shadeless = pymat.shadeless
-        b_mat.diffuse_color = [pow(v,2.2) for v in pymat.base_color[0:3]] #ungamma
+        b_mat.diffuse_color = self.sRGB_to_linear_color(pymat.base_color[0:3])#ungamma
         self.set_material_transparent(b_mat, pymat.alphaMode)
 
         self.color_texture_add(
@@ -255,7 +265,7 @@ class Blend_model():
                 self.un_affect_texture_add(b_mat, tex_index, 0, tex_name)
         for k, v in pymat.vector_props_dic.items():
             if k == "_Color":
-                b_mat.diffuse_color =  [pow(val,2.2) for val in v[0:3]] #un gamma
+                b_mat.diffuse_color =  self.sRGB_to_linear_color(v[0:3]) #gamma
             else:
                 b_mat[k] = v
         for k, v in pymat.keyword_dic.items():
@@ -271,7 +281,7 @@ class Blend_model():
                 self.color_texture_add(b_mat, tex_index, 0)
         for k, v in pymat.vector_props_dic.items():
             if k == "_Color":
-                b_mat.diffuse_color = [pow(val,2.2) for val in v[0:3]]
+                b_mat.diffuse_color = self.sRGB_to_linear_color(v[0:3])
             else:
                 b_mat[k] = v
         self.set_material_transparent(b_mat,"Z_TRANSPARENCY")          
@@ -504,7 +514,6 @@ class Blend_model():
                 bpy.ops.object.mode_set(mode='EDIT')
                 bpy.ops.mesh.delete_loose()
                 bpy.ops.mesh.select_all()
-                bpy.ops.mesh.remove_doubles(use_unselected= True)
                 bpy.ops.object.mode_set(mode='OBJECT')
                 obj.select = False
 

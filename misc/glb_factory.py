@@ -179,10 +179,20 @@ class Glb_obj():
 			v_mat_dic["keywordMap"] = keyword_map = {}
 			v_mat_dic["tagMap"] = tag_map = {}
 			#TODO: vector props
+
+			def linear_to_sRGB_color(linear_color):
+				sRGB_color = [0,0,0,1]
+				for i,c in enumerate(linear_color):
+					if c < 0.0031308:
+						sRGB_color[i] = c*12.92
+					else:
+						sRGB_color[i] = 1.055 * pow(c, 1 / 2.4) - 0.055
+				return sRGB_color
+
 			def get_prop(material, prop_name, defo):
 				return [*material[prop_name]] if prop_name in material.keys() else defo
 			v_mat_dic["vectorProperties"] = vec_dic = OrderedDict()
-			vec_dic["_Color"] = [*[pow(v,1/2.2) for v in b_mat.diffuse_color],1.0]
+			vec_dic["_Color"] = linear_to_sRGB_color(b_mat.diffuse_color)
 			vec_dic["_ShadeColor"] = get_prop(b_mat, "_ShadeColor", [0.3, 0.3, 0.5, 1.0])
 			vec_dic["_EmissionColor"] = get_prop(b_mat, "_EmissionColor", [0.0, 0.0, 0.0, 1.0])
 			vec_dic["_OutlineColor"] = get_prop(b_mat, "_OutlineColor", [0.0, 0.0, 0.0, 1.0])

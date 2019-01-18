@@ -61,11 +61,17 @@ class Blend_model():
         #image_path_to Texture
     def texture_load(self, vrm_pydata):
         self.textures = []
+
         for image_props in vrm_pydata.image_propaties:
             img = bpy.data.images.load(image_props.filePath)
             tex = bpy.data.textures.new(image_props.name,"IMAGE")
             tex.image = img
             self.textures.append(tex)
+        try:
+            if vrm_pydata.json["extensions"]["VRM"]["meta"]["texture"] != -1:
+                self.textures[vrm_pydata.json["extensions"]["VRM"]["meta"]["texture"]].image.use_fake_user = True
+        except Exception as e:
+            print(e)
         return
             
     def make_armature(self, vrm_pydata):

@@ -78,7 +78,10 @@ def read_vrm(model_path):
     #Vroidbhub licence
     if "otherPermissionUrl" in vrm_pydata.json["extensions"]["VRM"]["meta"]:
         from urllib.parse import parse_qsl,urlparse
-        if "vroid" in urlparse(vrm_pydata.json["extensions"]["VRM"]["meta"]["otherPermissionUrl"]).hostname:
+        address = urlparse(vrm_pydata.json["extensions"]["VRM"]["meta"]["otherPermissionUrl"]).hostname
+        if address is None:
+            pass
+        elif "vroid" in address :
             if dict(parse_qsl(vrm_pydata.json["extensions"]["VRM"]["meta"]["otherPermissionUrl"])).get("modification") == "disallow":
                 raise Exception("This VRM is not allowed to Edit. CHECK ITS LICENSE　改変不可Licenseです。")
     #オリジナルライセンスに対する注意
@@ -217,12 +220,12 @@ def material_read(vrm_pydata):
     VRM_EXTENSION_material_promaties = None
     textures = None
     try:
-        VRM_EXTENSION_material_promaties = vrm_pydata.json["extensions"]["VRM"]["materialProperties"]
+        VRM_EXTENSION_material_propaties = vrm_pydata.json["extensions"]["VRM"]["materialProperties"]
     except Exception as e:
         print(e)
     if "textures" in vrm_pydata.json:
         textures = vrm_pydata.json["textures"]
-    for mat,ext_mat in zip(vrm_pydata.json["materials"],VRM_EXTENSION_material_promaties):
+    for mat,ext_mat in zip(vrm_pydata.json["materials"],VRM_EXTENSION_material_propaties):
         vrm_pydata.materials.append(vrm2pydata_factory.material(mat,ext_mat,textures))
 
 

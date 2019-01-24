@@ -166,10 +166,12 @@ class Blend_model():
             b_mat["shader_name"] = mat.shader_name
             if type(mat) == VRM_Types.Material_GLTF:
                 self.build_material_from_GLTF(b_mat, mat)
-            if type(mat) == VRM_Types.Material_MToon:
+            elif type(mat) == VRM_Types.Material_MToon:
                 self.build_material_from_MToon(b_mat, mat)
-            if type(mat) == VRM_Types.Material_Transparent_Z_write:
-                self.build_material_from_Transparent_Z_write
+            elif type(mat) == VRM_Types.Material_Transparent_Z_write:
+                self.build_material_from_Transparent_Z_write(b_mat, mat)
+            else:
+                print("unkwon material {}".format(mat))
             self.material_dict[index] = b_mat
         return
 
@@ -216,8 +218,8 @@ class Blend_model():
             )
     def normal_texture_add(self, b_mat, texture_index, uv_layer_index):
         self.texture_add_helper(
-            b_mat, texture_index,
-            "UV", uv_layer_index,
+            b_mat,texture_index,
+            "UV",uv_layer_index,
             {"use_normal_map": True},
             {"blend_type": "MIX",
             "use_map_color_diffuse":False,
@@ -253,7 +255,7 @@ class Blend_model():
             b_mat, pymat.color_texture_index,
             pymat.color_texcoord_index)
         
-        self.texture_add_helper(
+        self.normal_texture_add(
             b_mat, pymat.normal_texture_index,
             pymat.normal_texture_texcoord_index)
         return
@@ -288,7 +290,8 @@ class Blend_model():
                 self.color_texture_add(b_mat, tex_index, 0)
         for k, v in pymat.vector_props_dic.items():
             if k == "_Color":
-                b_mat.diffuse_color = self.sRGB_to_linear_color(v[0:3])
+                if v != None:
+                    b_mat.diffuse_color = self.sRGB_to_linear_color(v[0:3])
             else:
                 b_mat[k] = v
         self.set_material_transparent(b_mat,"Z_TRANSPARENCY")          

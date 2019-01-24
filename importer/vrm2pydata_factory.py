@@ -32,50 +32,54 @@ def bone(node)->VRM_Types.Node:
 
 
 def material(mat,ext_mat,textures)->VRM_Types.Material:
-
-    if "VRM_USE_GLTFSHADER" in ext_mat["shader"]:  #standard, or VRM unsuported shader(no saved)
-        v_mat = VRM_Types.Material_GLTF()
-        v_mat.name = mat["name"]
-        v_mat.shader_name = "gltf"
+    def gltf_mat_factory():
+        gltf_mat = VRM_Types.Material_GLTF()
+        gltf_mat.name = mat["name"]
+        gltf_mat.shader_name = "gltf"
         if "pbrMetallicRoughness" in mat:
             pbrmat = mat["pbrMetallicRoughness"]
             if "baseColorTexture" in pbrmat:
                 texture_index = pbrmat["baseColorTexture"]["index"]
-                v_mat.color_texture_index = textures[texture_index]["source"]
-                v_mat.color_texcoord_index= pbrmat["baseColorTexture"]["texCoord"]
+                gltf_mat.color_texture_index = textures[texture_index]["source"]
+                gltf_mat.color_texcoord_index= pbrmat["baseColorTexture"]["texCoord"]
             if "baseColorFactor" in pbrmat:
-                v_mat.base_color = pbrmat["baseColorFactor"]
+                gltf_mat.base_color = pbrmat["baseColorFactor"]
             if "metallicFactor" in pbrmat:
-                v_mat.metallicFactor = pbrmat["metallicFactor"]
+                gltf_mat.metallicFactor = pbrmat["metallicFactor"]
             if "roughnessFactor" in pbrmat:
-                v_mat.roughnessFactor = pbrmat["roughnessFactor"]
+                gltf_mat.roughnessFactor = pbrmat["roughnessFactor"]
             if "metallicRoughnessTexture" in pbrmat:
-                v_mat.metallicRoughnessTexture_index = pbrmat["metallicRoughnessTexture"]
-                v_mat.metallicRoughnessTexture_texcoord = pbrmat["baseColorTexture"]["texCoord"]
+                gltf_mat.metallicRoughnessTexture_index = pbrmat["metallicRoughnessTexture"]
+                gltf_mat.metallicRoughnessTexture_texcoord = pbrmat["baseColorTexture"]["texCoord"]
         if "normalTexture" in mat:
-            v_mat.normal_texture_index = mat["normalTexture"]["index"]
-            v_mat.normal_texture_texcoord_index = mat["normalTexture"]["texCoord"]
+            gltf_mat.normal_texture_index = mat["normalTexture"]["index"]
+            gltf_mat.normal_texture_texcoord_index = mat["normalTexture"]["texCoord"]
         if "emissiveTexture" in mat:
-            v_mat.emissive_texture_index = mat["emissiveTexture"]["index"]
-            v_mat.emissive_texture_texcoord_index = mat["emissiveTexture"]["texCoord"]
+            gltf_mat.emissive_texture_index = mat["emissiveTexture"]["index"]
+            gltf_mat.emissive_texture_texcoord_index = mat["emissiveTexture"]["texCoord"]
         if "occlusionTexture" in mat:
-            v_mat.occlusion_texture_index = mat["occlusionTexture"]["index"]
-            v_mat.occlusion_texture_texcood_index = mat["occlusionTexture"]["texCoord"]
+            gltf_mat.occlusion_texture_index = mat["occlusionTexture"]["index"]
+            gltf_mat.occlusion_texture_texcood_index = mat["occlusionTexture"]["texCoord"]
         if "emissiveFactor" in mat:
-            v_mat.emissive_color = mat["emissiveFactor"]
+            gltf_mat.emissive_color = mat["emissiveFactor"]
 
         if "doubleSided" in mat:
-            v_mat.doubleSided = mat["doubleSided"]
+            gltf_mat.doubleSided = mat["doubleSided"]
         if "alphaMode" in mat:
             if mat["alphaMode"] == "MASK":
-                v_mat.alpha_mode = "MASK"
+                gltf_mat.alpha_mode = "MASK"
             if mat["alphaMode"] == "BLEND":
-                v_mat.alpha_mode = "Z_TRANSPARENCY"
+                gltf_mat.alpha_mode = "Z_TRANSPARENCY"
             if mat["alphaMode"] == "OPAQUE":
-                v_mat.alpha_mode = "OPAQUE"
+                gltf_mat.alpha_mode = "OPAQUE"
         if "extensions" in mat:
             if "KHR_materials_unlit" in mat["extensions"]:
-                v_mat.shadeless = True
+                gltf_mat.shadeless = True
+
+        return gltf_mat
+
+    if "VRM_USE_GLTFSHADER" in ext_mat["shader"]:  #standard, or VRM unsuported shader(no saved)
+        v_mat = gltf_mat_factory()
 
     else:#"MToon or Transparent_Zwrite"
         if ext_mat["shader"] == "VRM/MToon":
@@ -100,13 +104,17 @@ def material(mat,ext_mat,textures)->VRM_Types.Material:
             v_mat.keyword_dic.update(ext_mat["keywordMap"])
             v_mat.tag_dic.update(ext_mat["tagMap"])
 
-        if ext_mat["shader"] == "VRM/UnlitTransparentZWrite":
+        elif ext_mat["shader"] == "VRM/UnlitTransparentZWrite":
             v_mat = VRM_Types.Material_Transparent_Z_write()
+            v_mat.name = ext_mat["name"]
             v_mat.shader_name = ext_mat["shader"]
-            v_mat.float_prop_dic.update(ext_mat["floatProperties"])
+            v_mat.float_props_dic.update(ext_mat["floatProperties"])
             v_mat.vector_props_dic.update(ext_mat["vectorProperties"])
             v_mat.texture_index_dic.update(ext_mat["textureProperties"])
-
+        else:
+            print("unknow shader:{}. use gltf material".format(ext_mat["shader"]))
+            v_mat = gltf_mat_factory()
+        
     return v_mat
 
 
